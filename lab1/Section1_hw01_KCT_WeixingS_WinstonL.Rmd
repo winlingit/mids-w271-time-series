@@ -1,0 +1,90 @@
+---
+title: "Statistical Methods for Discrete Response, Time Series, and Panel Data (W271): Lab 1"
+author: "K.C. Tobin, Weixing Sun, Winston Lin"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Investigation of the 1989 Space Shuttle Challenger Accident 
+
+#### 1. Read the Dala et al (1989) paper (attached in this zip file).
+
+- Central question: What is the probability of catastrophic field-joint failure if we launch tomorrow morning at 31$^\circ$F?
+
+- Analysis of flights before Challenger launch showed that field joint O-ring reliability was in doubt due to joint rotation, ring compression, and ring erosion during ignition.  Effects were more severe at low temperatures.
+
+- Binomial model (n = 6) for probability of thermal distress per field joint included only temperature.  Pressure was dropped from model after testing hypothesis of no pressure effect, which found 90% CIs overlapped significantly (Model 3.2).  Model 3.2 assumes independence of thermal distress across 6 joints.  (p.5)
+
+- Binary model, probability of thermal distress on at least one joint, was shown to follow binomial model closely.  Independence assumption not required.
+
+- Models estimated that 4-5 O-rings would be damaged at 31$^\circ$F.
+
+- Bootstrap CIs for betas and probabilities were estimated using binomial model instead of actual data.  CIs for $t < 65$ were wide due to lack of data in that range.  90% CI for $t = 30$ was (1, 6).
+
+- Sensitivity analysis conducted by fitting models for all 23 points with each point held out and comparing standardized residuals of between coefficients of hold out and full models.  Holding out Point 21 resulted in large residual, but did not invalidate model.
+
+- Linear relation between logit model and temperature was confirmed by adding quadratic term and performing LRT.  Linearity also confirmed by estimating nonparametric relationship based on smoothing of data.  Model was plotted against smoothed values and fit well.  Standardized residuals between smoothed and fitted values were mostly random versus temperature except for 2 outliers (points 9 and 21).
+
+- Binary model (n = 2) for probability of thermal distress per nozzle joint included both temperature and pressure.  Pressure was found to have a greater effect than temperature. (pp.9-10)
+
+#### 2. Conduct a thorough analysis and EDA of the given dataset "challenger.csv", as we did in live session 2 and 3. Pay attention to the instructions given above.
+
+```{r pressure, echo=FALSE}
+library(data.table)
+dt = as.data.table(read.csv('challenger.csv', header = TRUE, sep = ','))
+head(dt)
+
+temp = dt[, .(pi = sum(O.ring) / sum(Number)), by = Temp]
+pres = dt[, .(pi = sum(O.ring) / sum(Number)), by = Pressure]
+# plots
+par(mfrow = c(1,2))
+plot(x = temp$Temp, y = temp$pi)
+plot(x = pres$Pressure, y = pres$pi)
+```
+
+#### 3. Answer question 4 and 5 on Chapter 2 (page 129 and 130) of Bilder and Loughin's *"Analysis of Categorical Data with R"*
+
+2.4.  The failure of an O-ring on the space shuttle Challenger’s booster rockets led to its destruction in 1986. Using data on previous space shuttle launches, Dalal et al. (1989) examine the probability of an O-ring failure as a function of temperature at launch and combustion pressure. Data from their paper is included in the challenger.csv file. Below are the variables:
+
+- Flight: Flight number
+
+- Temp: Temperature (F) at launch
+
+- Pressure: Combustion pressure (psi)
+
+- O.ring: Number of primary field O-ring failures
+
+- Number: Total number of primary field O-rings (six total, three each for the two
+booster rockets)
+
+The response variable is O.ring, and the explanatory variables are Temp and Pressure. Complete the following:
+
+a. The authors use logistic regression to estimate the probability an O-ring will fail. In order to use this model, the authors needed to assume that each O-ring is independent for each launch. Discuss why this assumption is necessary and the potential problems with it. Note that a subsequent analysis helped to alleviate the authors’ concerns about independence.
+
+b. Estimate the logistic regression model using the explanatory variables in a linear form.
+
+c. Perform LRTs to judge the importance of the explanatory variables in the model.
+
+d. The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?
+
+2.5. Continuing Exercise 4, consider the simplified model logit($\pi$) = $\beta_0 + \beta_1\text{Temp}$, where $\pi$ is the probability of an O-ring failure. Complete the following:
+
+a. Estimate the model.
+
+b. Construct two plots: (1) $\pi$ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of $31^\circ$ to $81^\circ$ on the x-axis even though the minimum temperature in the data set was $53^\circ$.
+
+c. Include the 95% Wald confidence interval bands for $\pi$ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?
+
+d. The temperature was $31^\circ$ at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.
+
+e. Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit($\hat{\pi}$) = $\hat{\beta_0} + \hat{\beta_1}\text{Temp}$; (2) estimate new models for each data set, say logit($\hat{\pi}^*$) = $\hat{\beta_0^*} + \hat{\beta_1^*}\text{Temp}$; and (3) compute $\hat{\pi}^*$ at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^*$ simulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of $31^\circ$ and $72^\circ$.
+
+e. Determine if a quadratic term is needed in the model for the temperature.
+
+#### 4. In addition to the questions in Question 4 and 5, answer the following questions:
+  a. Interpret the main result of your final model in terms of both odds and probability of failure 
+  b. Plot the main effect of your final model with the y-axis being probability of failure and x-axis being *temperature*.

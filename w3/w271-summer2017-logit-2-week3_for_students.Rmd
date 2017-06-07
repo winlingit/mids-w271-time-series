@@ -1,0 +1,141 @@
+---
+title: "Live Session - Week 3: Discrete Response Models Lecture 2"
+author: "Devesh Tiwari"
+date: "5/30/2017"
+output: pdf_document
+---
+
+# Agenda
+
+1. Brief review (10 mins)
+
+2. Breakout Session: Odds ratio and interpreting coefficients (30 mins)
+
+3. Breakout Session: Predicted values and confidence intervals (30 mins)
+
+4. Breakout Session and conclusion: Interaction effects (remaining time)
+
+# Announcments
+
+Lab 1 will be posted this week and it is due on June 18th by 11:59 PM PT.
+
+
+This lecture begins the study of logistic regression models, the most important special case of the generalized linear models (GLMs). It begins with a discussion of why classical linear regression models is not appropriate, from both statistical sense and practical application sense, to model categorical respone variable.
+
+# This week
+
+## Topics covered
+
+* Variable transformation: interactions among explanatory variables
+* Variable transformation: quadratic term
+* Categorical explanatory variables
+* Odds ratio in the context of categorical explanatory variables
+* Convergence criteria and complete separation
+
+Please make sure that you are very familiar with the concepts and techniques coverd in this and last lecture, as they will be used again in the next two lectures in situations that are more general (from two categorical to $J > 2$ categories and from unordered cateogrical variables to ordinal variables). Especially in multinomial logistic regression models, the notions will be much heavier.
+
+##Required Readings:
+
+**BL2015:** Christopher R. Bilder and Thomas M. Loughin. Analysis of Categorical Data with R. CRC Press. 2015.
+
+  - Ch. 2.2.5 – 2.2.7, 2.3
+
+
+\newpage
+# Breakout Session : Interpreting coefficients (20 minutes in breakout groups + 10 minutes group discussion)
+Let's return to the data and models we ran last week (see below). Imagine that you were reporting these results in a report or paper. With that in mind:
+
+(a) Interpret the coefficients for *k5* and *age* using Odds Ratios
+Each additional child increases the odds that a woman does not work by 4.3x.  Since change in OR < 1, take reciprocal.
+
+Each additional year of age increases the odds that a woman does not work by 6.5%.  Since change in OR < 1, take reciprocal.
+
+(b) Calculate the 95 \%  Wald - interval for your interpretations above.
+
+(c) Calculate the 95 \% Profile LR intervals for your interpretations above. Are they the same? Why or why not? 
+
+```{r, message = FALSE}
+rm(list = ls())
+library(car)
+require(dplyr)
+library(Hmisc)
+library(stargazer)
+
+mroz.glm <- glm(lfp ~ k5 + k618 + age + wc + hc + lwg + inc,
+                family = 'binomial', data = Mroz)
+
+summary(mroz.glm)
+```
+
+```{r}
+
+# 1.b. Wald intervals
+beta.ci.k5 = confint.default(object=mroz.glm, parm='k5', level=.95)
+beta.ci.k5
+exp(beta.ci.k5)
+
+beta.ci.k5.2 = mroz.glm$coefficients[2] + qnorm(p = c(.025,.975)) * sqrt(vcov(mroz.glm)[2,2])
+
+beta.ci.age = confint.default(object=mroz.glm, parm='age', level=.95)
+beta.ci.age
+exp(beta.ci.age)
+
+beta.ci.age.2 = mroz.glm$coefficients[4] + qnorm(p = c(.025,.975)) * sqrt(vcov(mroz.glm)[4,4])
+
+# 1.c. profile LR intervals
+beta.ci.k5.lr = confint(object=mroz.glm, parm='k5', level=.95)
+beta.ci.k5.lr
+exp(beta.ci.k5.lr)
+
+beta.ci.age.lr = confint(object=mroz.glm, parm='age', level=.95)
+beta.ci.age.lr
+exp(beta.ci.age.lr)
+```
+
+# Breakout Session 2: Predicted values and confidence intervals (20 minutes in breakout groups + 10 minutes group discussion)
+
+This is an extension of of the examples from last week; we are going to generate some predicted values and their associated confience intervals. We can generate Wald-intervals and profile-LR intervals, though for this exercise we are going to generate Wald-intervals using the *predict.glm* function. The *predict.glm* function can return predicted values in terms of the log-odds (type = "link") and in terms of the predicted probability of an event occuring (type = "response"). *predict.glm* does not calculate confidence intervals, it calculates the predicted value's confidence interval instead (se.fit = TRUE). We are going to compare and contrast two ways to calculate predicted values and their confidence intervals: The wrong way and the right way.
+
+(a) Calculate the predicted probability a woman participates in the labor force conditional on her having no kids, is 20 years old, did not go to college, her husband did not go to college, her logged wages is 1.0971, and family income excluding her own is 20. Calculate this the "wrong" way first by examining the predicted probability only (type = "response") and then calculate this again by transforming the log-odds (type = "link").
+
+```{r}
+
+```
+
+(b) Repeat this exercise, but for a woman with 4 kids under the age of 5 and who is 60 years old. Are there any women in the dataset who resemble this profile?
+
+(c) Comment on your output. Why do you think the "wrong way" is actually wrong?
+
+(d) If you have time, modify this code so you can graph the predicted probability a woman participates in the labor force by varying age between 20 and 60. Include the confidence intervals in your plot.
+
+# Breakout Session 3: Interaction effects (15 minutes in breakout groups, 10 minutes group discussion)
+
+Suppose we are interested in understanding if the relationship between college education and labor force participation is conditional on age (alternatively, we could say that we are interested in understanding if the relationship between age and labor force participation is different for women who went to college versus those who did not). In order to test this hypothesis, we need to add an interaction term to the model (see below).
+
+(a) Interpret the impact of college education on labor force participation for the null model, and then again for the model that includes the interaction term (do not worry about the confidence intervals). Based on these results of the newer model, do you think that women who attend college are more likely to participate in the labor force?
+
+In the null model, attending college increases the odds of working by 2.2x.  In the model with an interaction term, there is weak evidence that college attendance has an effect on the odds of working.
+
+(b) Formally test the hypothesis that the interaction effect between age and college education is zero (that is, test the null hypothesis that the relationship between college education and labor force participation is NOT conditional on age).
+
+(c) Comment on your findings.
+
+The evidence supports the null hypothesis that the interaction effect between age and college education is zero.
+
+```{r}
+mroz.interact.glm <- glm(lfp ~ k5 + k618 + age + wc + hc + lwg + inc + wc:age,
+                         family = 'binomial', data = Mroz)
+
+# Interpret impact of college
+stargazer(mroz.glm, mroz.interact.glm, type = "text", summary = FALSE)
+```
+
+
+```{r}
+# 3.b. hypothesis test for interaction effect
+anova(mroz.glm, mroz.interact.glm, test='Chisq')
+
+# 3.c. create plot of predicted values as in p.98
+
+```
+

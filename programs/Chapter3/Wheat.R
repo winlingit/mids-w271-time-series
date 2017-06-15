@@ -6,7 +6,7 @@
 # NOTES:                                                            #
 #####################################################################
 
-wheat <- read.csv(file  = "C:\\data\\wheat.csv")
+wheat <- read.csv(file  = "/Users/winlin/Desktop/w271-time-series/programs/Chapter3/wheat.csv")
 
 head(wheat, n = 3)  # n argument gives the number of rows to print
 tail(wheat, n = 3)

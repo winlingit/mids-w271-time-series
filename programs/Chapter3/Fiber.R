@@ -10,7 +10,7 @@
 #####################################################################
 # Read in data
 
-  diet <- read.csv(file = "C:\\data\\Fiber.csv")
+  diet <- read.csv(file = "/Users/winlin/Desktop/w271-time-series/programs/Chapter3/Fiber.csv")
 
   # Match order given at DASL
   diet$fiber<-factor(x = diet$fiber, levels = c("none", "bran", "gum", "both"))

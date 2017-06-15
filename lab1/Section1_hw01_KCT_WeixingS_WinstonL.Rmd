@@ -78,11 +78,30 @@ The response variable is O.ring, and the explanatory variables are Temp and Pres
 
 a. The authors use logistic regression to estimate the probability an O-ring will fail. In order to use this model, the authors needed to assume that each O-ring is independent for each launch. Discuss why this assumption is necessary and the potential problems with it. Note that a subsequent analysis helped to alleviate the authors’ concerns about independence.
 
+The assumption of independence between O-ring failures ensured that probability of failure could be modeled using a Poisson distribution, which assumes independence between trials.  The potential problem with this is that O-ring failures might not be completely independent, and thus, the probability model would have limited explanatory or predictive power in physical reality.
+
 b. Estimate the logistic regression model using the explanatory variables in a linear form.
+
+```{r}
+# binary response model
+dt[, fail := as.numeric(O.ring > 0)]
+mod.fit.lr = glm(formula = fail ~ Temp + Pressure, family = binomial(link = logit), data = dt)
+summary(mod.fit.lr)
+```
 
 c. Perform LRTs to judge the importance of the explanatory variables in the model.
 
+```{r}
+library(car)
+Anova(mod.fit.lr, test = 'LR')
+beta.ci = confint(object = mod.fit.lr, parm = 'distance', level = 0.95)
+```
+
+LRT shows that pressure is not important as an explanatory variable in the model (p-value > 0.05).
+
 d. The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?
+
+Pressure was removed from the model because it was shown to have little explanatory power in the LRTs.  The pressure variable measured the pressure at which the O-rings were tested before launch, not the actual pressure on the joint during the launch.  Thus, removing the pressure variable given is reasonable.  However, actual pressure during the launch affect the probability of O-ring failure given the physical relationship between temperature and pressure in gasses.
 
 2.5. Continuing Exercise 4, consider the simplified model logit($\pi$) = $\beta_0 + \beta_1\text{Temp}$, where $\pi$ is the probability of an O-ring failure. Complete the following:
 

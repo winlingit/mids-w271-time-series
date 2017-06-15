@@ -78,7 +78,7 @@ The response variable is O.ring, and the explanatory variables are Temp and Pres
 
 a. The authors use logistic regression to estimate the probability an O-ring will fail. In order to use this model, the authors needed to assume that each O-ring is independent for each launch. Discuss why this assumption is necessary and the potential problems with it. Note that a subsequent analysis helped to alleviate the authors’ concerns about independence.
 
-The assumption of independence between O-ring failures ensured that probability of failure could be modeled using a Poisson distribution, which assumes independence between trials.  The potential problem with this is that O-ring failures might not be completely independent, and thus, the probability model would have limited explanatory or predictive power in physical reality.
+The assumption of independence between O-ring failures ensured that probability of failure could be modeled using a binomial distribution, which assumes independence between trials.  The potential problem with this is that O-ring failures might not be completely independent, and thus, the probability model would have limited explanatory or predictive power in physical reality.
 
 b. Estimate the logistic regression model using the explanatory variables in a linear form.
 
@@ -94,10 +94,9 @@ c. Perform LRTs to judge the importance of the explanatory variables in the mode
 ```{r}
 library(car)
 Anova(mod.fit.lr, test = 'LR')
-beta.ci = confint(object = mod.fit.lr, parm = 'distance', level = 0.95)
 ```
 
-LRT shows that pressure is not important as an explanatory variable in the model (p-value > 0.05).
+LRT shows that the effect of pressure is not statistically significant (p-value > 0.05).
 
 d. The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?
 
@@ -107,13 +106,83 @@ Pressure was removed from the model because it was shown to have little explanat
 
 a. Estimate the model.
 
+```{r}
+# binary response model
+mod.fit.lr2 = glm(formula = fail ~ Temp, family = binomial(link = logit), data = dt)
+summary(mod.fit.lr2)
+```
+
 b. Construct two plots: (1) $\pi$ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of $31^\circ$ to $81^\circ$ on the x-axis even though the minimum temperature in the data set was $53^\circ$.
+
+```{r}
+# predicted values with temperature only model
+pred.x = data.frame(Temp = 31:81)
+logit = predict(object = mod.fit.lr2, newdata = pred.x, type = 'link', se = TRUE)
+pi.hat = exp(logit$fit) / (1 + exp(logit$fit))
+
+# Wald confidence interval
+alpha = 0.05
+# ci.logit = logit$fit + qnorm(p = c(alpha/2, 1 - alpha/2))*logit$se.fit
+# ci.pi = exp(ci.logit) / (1 + exp(ci.logit))
+
+ci.logit.upper = logit$fit + qnorm(p = 1 - alpha/2)*logit$se.fit
+ci.logit.lower = logit$fit + qnorm(p = alpha/2)*logit$se.fit
+ci.pi.upper = exp(ci.logit.upper) / (1 + exp(ci.logit.upper))
+ci.pi.lower = exp(ci.logit.lower) / (1 + exp(ci.logit.lower))
+
+# data table with predicted values
+pred = data.table(pred.x,
+                  pi.hat = pi.hat,
+                  n.hat = pi.hat*6,
+                  ci.pi.lower = ci.pi.lower,
+                  ci.pi.upper = ci.pi.upper)
+
+# plots of pi.hat and expected incidents vs. temperature
+par(mfrow = c(2,2))
+
+# plot of pi.hat vs. temperature
+plt1 = ggplot()
+plt1 + geom_line(data = pred, aes(x = Temp, y = pi.hat)) +
+        geom_line(data = pred, aes(x = Temp, y = ci.pi.upper), color = 'red', linetype = 'dotted') +
+        geom_line(data = pred, aes(x = Temp, y = ci.pi.lower), color = 'red', linetype = 'dotted') +
+        labs(title = 'Pi vs. Temperature', x = 'Temperature (F)') +
+        theme(legend.position = 'none')
+
+# plot of expected incidents vs. temperature
+plt2 = ggplot() +
+        geom_line(data = pred, aes(x = temp, y = n.hat)) +
+        labs(title = 'Expected number of failures vs. Temperature', x = 'Temperature (F)') +
+        theme(legend.position = 'none')
+```
 
 c. Include the 95% Wald confidence interval bands for $\pi$ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?
 
+The confidence interval width is wider for lower temperatures because there is no data on incidents below $53^\circ$.  Intuitively, we are less confident predictions made in ranges where there is little or no data to inform them.
+
 d. The temperature was $31^\circ$ at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.
 
+```{r}
+# predication at 31 degrees
+pred[31]$pi.hat
+
+# 95% Wald CI
+ci.pi.lower[31]
+ci.pi.upper[31]
+```
+$\hat{\pi}$ = 0.7070, 95% Wald CI = [0.2880, 09380].  In order to perform inference with our model, we assume trials are independent to apply a binomial distribution.  We also assume there is no complete separation of data, which would cause extreme values of coefficients that would not converge easily.
+
 e. Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit($\hat{\pi}$) = $\hat{\beta_0} + \hat{\beta_1}\text{Temp}$; (2) estimate new models for each data set, say logit($\hat{\pi}^*$) = $\hat{\beta_0^*} + \hat{\beta_1^*}\text{Temp}$; and (3) compute $\hat{\pi}^*$ at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^*$ simulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of $31^\circ$ and $72^\circ$.
+
+```{r}
+# simulate data sets from estimated model
+set.seed()
+y = rbinom(n = 23, size = 6, prob = )
+
+# estimate new models with simulated data
+
+
+# compute outcomes with bootstrapped models; take 0.05 and 0.95 quantiles of observed outcomes as 90% CI
+```
 
 e. Determine if a quadratic term is needed in the model for the temperature.
 

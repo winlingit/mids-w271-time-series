@@ -1,7 +1,7 @@
 ---
 title: "Statistical Methods for Discrete Response, Time Series, and Panel Data (W271): Lab 1"
-author: "K.C. Tobin, Weixing Sun, Winston Lin"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "K.C. Tobin, Weixing Sun, Winston Lin"
 output: pdf_document
 ---
 
@@ -37,6 +37,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(data.table)
 library(ggplot2)
 
+# read dataset, contains flight level of detail for measures (Temp, Pressure, O.ring, Numebr)
 dt = as.data.table(read.csv('challenger.csv', header = TRUE, sep = ','))
 # head(dt)
 
@@ -83,31 +84,49 @@ The assumption of independence between O-ring failures ensured that probability 
 b. Estimate the logistic regression model using the explanatory variables in a linear form.
 
 ```{r}
-# binary response model
+# transform data
+dtt2 = dt[, .(w = sum(O.ring), n = sum(Number)), by = c('Temp', 'Pressure')][, pi.hat := w/n]
+
+# fit binomial response model
+mod.fit.lr1 = glm(formula = pi.hat ~ Temp + Pressure, family = binomial(link = logit), data = dtt2)
+summary(mod.fit.lr1)
+
+
+
+# binarize outcome: fail = 1 if O.ring > 0, else 0
 dt[, fail := as.numeric(O.ring > 0)]
-mod.fit.lr = glm(formula = fail ~ Temp + Pressure, family = binomial(link = logit), data = dt)
-summary(mod.fit.lr)
+
+# fit binary response model
+mod.fit.lr1 = glm(formula = fail ~ Temp + Pressure, family = binomial(link = logit), data = dt)
+summary(mod.fit.lr1)
 ```
 
 c. Perform LRTs to judge the importance of the explanatory variables in the model.
 
 ```{r}
 library(car)
-Anova(mod.fit.lr, test = 'LR')
+
+# LRTs for binary model
+Anova(mod.fit.lr1, test = 'LR')
+anova(mod.fit.lr1, test = 'Chisq')
 ```
 
-LRT shows that the effect of pressure is not statistically significant (p-value > 0.05).
+LRT shows strong evidence that the effect of temperature is statistically significant (p-value < 0.01).  There is no weak evidence that the effect of pressure is statistically significant (p-value >> 0.05).
 
 d. The authors chose to remove Pressure from the model based on the LRTs. Based on your results, discuss why you think this was done. Are there any potential problems with removing this variable?
 
-Pressure was removed from the model because it was shown to have little explanatory power in the LRTs.  The pressure variable measured the pressure at which the O-rings were tested before launch, not the actual pressure on the joint during the launch.  Thus, removing the pressure variable given is reasonable.  However, actual pressure during the launch affect the probability of O-ring failure given the physical relationship between temperature and pressure in gasses.
+Pressure was removed from the model because it was shown to have little explanatory power in the LRTs (p-value > 0.05).  The problem with the pressure variable was that it was measured during tests of O-rings before launch, not the actual pressure on the joint during the launch.  Thus, removing the pressure variable given is reasonable.  However, actual pressure during the launch would probably affect the probability of O-ring failure given the physical relationship between temperature and pressure in gasses.
 
 2.5. Continuing Exercise 4, consider the simplified model logit($\pi$) = $\beta_0 + \beta_1\text{Temp}$, where $\pi$ is the probability of an O-ring failure. Complete the following:
 
 a. Estimate the model.
 
 ```{r}
-# binary response model
+# fit binomial response model
+mod.fit.lr2 = glm(formula = pi.hat ~ Temp, family = binomial(link = logit), data = dtt2)
+summary(mod.fit.lr2)
+
+# fit binary response model
 mod.fit.lr2 = glm(formula = fail ~ Temp, family = binomial(link = logit), data = dt)
 summary(mod.fit.lr2)
 ```
@@ -115,23 +134,31 @@ summary(mod.fit.lr2)
 b. Construct two plots: (1) $\pi$ vs. Temp and (2) Expected number of failures vs. Temp. Use a temperature range of $31^\circ$ to $81^\circ$ on the x-axis even though the minimum temperature in the data set was $53^\circ$.
 
 ```{r}
+
+# calcs pi from logit value
+pi.logit = function(log.odds) {
+        exp(log.odds) / (1 + exp(log.odds))
+}
+
 # predicted values with temperature only model
 pred.x = data.frame(Temp = 31:81)
 logit = predict(object = mod.fit.lr2, newdata = pred.x, type = 'link', se = TRUE)
-pi.hat = exp(logit$fit) / (1 + exp(logit$fit))
+pi.hat = pi.logit(logit$fit)
 
-# Wald confidence interval
+# Wald confidence interval for pi
 alpha = 0.05
+
+# *** multiplying vector of scores only works for single prediction, not vector...
 # ci.logit = logit$fit + qnorm(p = c(alpha/2, 1 - alpha/2))*logit$se.fit
 # ci.pi = exp(ci.logit) / (1 + exp(ci.logit))
 
 ci.logit.upper = logit$fit + qnorm(p = 1 - alpha/2)*logit$se.fit
 ci.logit.lower = logit$fit + qnorm(p = alpha/2)*logit$se.fit
-ci.pi.upper = exp(ci.logit.upper) / (1 + exp(ci.logit.upper))
-ci.pi.lower = exp(ci.logit.lower) / (1 + exp(ci.logit.lower))
+ci.pi.upper = pi.logit(ci.logit.upper)
+ci.pi.lower = pi.logit(ci.logit.lower)
 
 # data table with predicted values
-pred = data.table(pred.x,
+pred.results = data.table(pred.x,
                   pi.hat = pi.hat,
                   n.hat = pi.hat*6,
                   ci.pi.lower = ci.pi.lower,
@@ -142,52 +169,130 @@ par(mfrow = c(2,2))
 
 # plot of pi.hat vs. temperature
 plt1 = ggplot()
-plt1 + geom_line(data = pred, aes(x = Temp, y = pi.hat)) +
-        geom_line(data = pred, aes(x = Temp, y = ci.pi.upper), color = 'red', linetype = 'dotted') +
-        geom_line(data = pred, aes(x = Temp, y = ci.pi.lower), color = 'red', linetype = 'dotted') +
+plt1 + geom_line(data = pred.results, aes(x = Temp, y = pi.hat)) +
+        geom_line(data = pred.results, aes(x = Temp, y = ci.pi.upper), color = 'red', linetype = 'dotted') +
+        geom_line(data = pred.results, aes(x = Temp, y = ci.pi.lower), color = 'red', linetype = 'dotted') +
+        geom_point(data = dtt, aes(x = Temp, y = pi.hat, size = n)) +
         labs(title = 'Pi vs. Temperature', x = 'Temperature (F)') +
         theme(legend.position = 'none')
 
+
 # plot of expected incidents vs. temperature
-plt2 = ggplot() +
-        geom_line(data = pred, aes(x = temp, y = n.hat)) +
+plt2 = ggplot()
+plt2 + geom_line(data = pred.results, aes(x = Temp, y = n.hat)) +
+        geom_point(data = dtt, aes(x = Temp, y = w)) +
         labs(title = 'Expected number of failures vs. Temperature', x = 'Temperature (F)') +
         theme(legend.position = 'none')
+
+
 ```
 
 c. Include the 95% Wald confidence interval bands for $\pi$ on the plot. Why are the bands much wider for lower temperatures than for higher temperatures?
 
-The confidence interval width is wider for lower temperatures because there is no data on incidents below $53^\circ$.  Intuitively, we are less confident predictions made in ranges where there is little or no data to inform them.
+The confidence interval is wider for lower temperatures because there is no data on incidents below $53^\circ$, and there are higher variance observations at lower temperatures.  The confidence intervals narrows at temperatures of $70^\circ$ and above, where the bulk of our data are.  Intuitively, we are less confident predictions made in ranges where there is little or no data to inform them.
 
 d. The temperature was $31^\circ$ at launch for the Challenger in 1986. Estimate the probability of an O-ring failure using this temperature, and compute a corresponding confidence interval. Discuss what assumptions need to be made in order to apply the inference procedures.
 
 ```{r}
-# predication at 31 degrees
-pred[31]$pi.hat
+# prediction at 31 degrees
+logit31 = predict(object = mod.fit.lr2, newdata = data.frame(Temp = 31), type = "link", se.fit = TRUE)
+pred31 = pi.logit(logit31$fit)
+pred31
+
 
 # 95% Wald CI
-ci.pi.lower[31]
-ci.pi.upper[31]
+ci.logit31 = logit31$fit + qnorm(p = c(alpha/2, 1-alpha/2))*logit31$se.fit
+ci.pi31 = pi.logit(ci.logit31)
+ci.pi31
+# round(c(lower = ci.pi.lower[1], upper = ci.pi.upper[1]), 4)
 ```
-$\hat{\pi}$ = 0.7070, 95% Wald CI = [0.2880, 09380].  In order to perform inference with our model, we assume trials are independent to apply a binomial distribution.  We also assume there is no complete separation of data, which would cause extreme values of coefficients that would not converge easily.
+$\hat{\pi}$ = 0.9996, 95% Wald CI = [0.4816, 0.9999].  In order to perform inference with our model, we assume trials are independent to apply a binomial distribution.  We also assume there is no complete separation of data, which would cause extreme values of coefficients that would not converge easily.
 
 e. Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit($\hat{\pi}$) = $\hat{\beta_0} + \hat{\beta_1}\text{Temp}$; (2) estimate new models for each data set, say logit($\hat{\pi}^*$) = $\hat{\beta_0^*} + \hat{\beta_1^*}\text{Temp}$; and (3) compute $\hat{\pi}^*$ at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^*$ simulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of $31^\circ$ and $72^\circ$.
 
-```{r}
-# simulate data sets from estimated model
-set.seed()
-y = rbinom(n = 23, size = 6, prob = )
+90% Wald CI:
+Temp = 31: [0.9997, 1]
+Tepmp = 72: [0.4244, 0.9523]
 
-# estimate new models with simulated data
+```{r message=FALSE}
+### simulates failures based on estimated prob distribution of failures
+bootstrap <- function(pi.hat, data){
+        # simulate failures
+        failures <- rbinom(n = 23, size = 6, pi.hat)
+        # data$O.ring <- failures
+        
+        # transform data for binomial model (calc pi.hats for response)
+        # dtt.bs = data[, .(w = sum(O.ring), n = sum(Number)), by = Temp][, pi.hat := w/n]
+        # fit binomial model
+        # mod <- glm(pi.hat ~ Temp, family = binomial(link = logit), data = dtt.bs)
+        
+        # transform data for binary model (binarize failures for response)
+        dtt.bs = data
+        dtt.bs[, O.ring := failures][, fail := as.numeric(O.ring > 0)]
+        
+        # fit binary model
+        mod.fit.bs = glm(formula = fail ~ Temp, family = binomial(link = logit), data = dtt.bs)
+      
+        # pred31 <- unlist(predict(mod, data.frame(Temp = 31), type = "response"))
+        # pred72 <- unlist(predict(mod, data.frame(Temp = 72), type = "response"))
+        
+        # make predictions
+        pred31 <- predict(object = mod.fit.bs, newdata = data.frame(Temp = 31), type = "response")
+        pred72 <- predict(object = mod.fit.bs, newdata = data.frame(Temp = 72), type = "response")
+        return(list(pred.31 = pred31, pred.72 = pred72))
+}
 
+# estimate prob distribution for bootstrapping
+pi.hat <- predict(object = mod.fit.lr2, newdata = data.frame(Temp = dt$Temp), type = "response")
 
-# compute outcomes with bootstrapped models; take 0.05 and 0.95 quantiles of observed outcomes as 90% CI
+# bootstrap 1000 samples and return predictions as sorted list
+preds <- replicate(10000, bootstrap(pi.hat, dt))
+preds.31 <- sort(unlist(preds[1,]))
+preds.72 <- sort(unlist(preds[2,]))
+
+# take 0.05 and 0.95 quantiles of observed outcomes as 90% CI
+ci.pi31 = quantile(preds.31, c(.05, .95))
+ci.pi31
+
+ci.pi72 = quantile(preds.72, c(.05, .95))
+ci.pi72
 ```
 
 e. Determine if a quadratic term is needed in the model for the temperature.
+
+ANOVA tests show that the quadratic term for temperature does not add explanatory power to the original model and can be removed.
+
+```{r}
+# model with quadratic term for temperature
+mod.fit.lr3 = glm(formula = fail ~ Temp + I(Temp^2), family = binomial(link = logit), data = dt)
+summary(mod.fit.lr3)
+
+# LRTs
+Anova(mod.fit.lr3, test = 'LR')
+anova(mod.fit.lr2, mod.fit.lr3, test = 'Chisq')
+```
 
 #### 4. In addition to the questions in Question 4 and 5, answer the following questions:
 
 a. Interpret the main result of your final model in terms of both odds and probability of failure.
 
+For each degree that temperature decreases, the odds of any joint failure occurring will increase by 1.26 times under our binary model.  At $31^\circ$, the predicted probability of joint failures occurring would be 1, so flights at such temperatures should be avoided.
+
+```{r}
+# odds for binary model
+summary(mod.fit.lr2)
+1 / exp(mod.fit.lr2$coefficients[2])
+```
+
 b. Plot the main effect of your final model with the y-axis being probability of failure and x-axis being *temperature*.
+
+```{r}
+# plot of pi.hat vs. temperature
+plt1 = ggplot()
+plt1 + geom_line(data = pred.results, aes(x = Temp, y = pi.hat)) +
+        geom_line(data = pred.results, aes(x = Temp, y = ci.pi.upper), color = 'red', linetype = 'dotted') +
+        geom_line(data = pred.results, aes(x = Temp, y = ci.pi.lower), color = 'red', linetype = 'dotted') +
+        geom_point(data = dtt, aes(x = Temp, y = pi.hat, size = n)) +
+        labs(title = 'Pi vs. Temperature', x = 'Temperature (F)') +
+        theme(legend.position = 'none')
+```

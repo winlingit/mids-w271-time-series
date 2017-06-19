@@ -294,7 +294,7 @@ For each degree that temperature decreases, the odds of any joint failure occurr
 
 ```{r, warning=FALSE}
 library(stargazer)
-stargazer(mod.fit.lr1,mod.fit.lr2, mod.fit.lr3, type = "text")
+stargazer(mod.fit.lr1,mod.fit.lr2, mod.fit.lr3, type = "latex")
 # odds for binomial model
 summary(mod.fit.lr2)
 1 / exp(mod.fit.lr2$coefficients[2])

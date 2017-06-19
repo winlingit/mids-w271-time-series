@@ -221,7 +221,7 @@ ci.pi31 = pi.logit(ci.logit31)
 ci.pi31
 # round(c(lower = ci.pi.lower[1], upper = ci.pi.upper[1]), 4)
 ```
-$\hat{\pi}$ = 0.9996, 95% Wald CI = [0.4816, 0.9999].  In order to perform inference with our model, we assume trials are independent to apply a binomial distribution.  We also assume there is no complete separation of data, which would cause extreme values of coefficients that would not converge easily.
+$\hat{\pi}$ = `r round(pred31,4)`, 95% Wald CI = `r round(ci.pi31,4)`.  In order to perform inference with our model, we assume trials are independent to apply a binomial distribution.  We also assume there is no complete separation of data, which would cause extreme values of coefficients that would not converge easily.
 
 e. Rather than using Wald or profile LR intervals for the probability of failure, Dalal et al. (1989) use a parametric bootstrap to compute intervals. Their process was to (1) simulate a large number of data sets (n = 23 for each) from the estimated model of logit($\hat{\pi}$) = $\hat{\beta_0} + \hat{\beta_1}\text{Temp}$; (2) estimate new models for each data set, say logit($\hat{\pi}^*$) = $\hat{\beta_0^*} + \hat{\beta_1^*}\text{Temp}$; and (3) compute $\hat{\pi}^*$ at a specific temperature of interest. The authors used the 0.05 and 0.95 observed quantiles from the $\hat{\pi}^*$ simulated distribution as their 90% confidence interval limits. Using the parametric bootstrap, compute 90% confidence intervals separately at temperatures of $31^\circ$ and $72^\circ$.
 

@@ -292,10 +292,10 @@ a. Interpret the main result of your final model in terms of both odds and proba
 
 For each degree that temperature decreases, the odds of any joint failure occurring will increase by 1.12 times under our binary model.  At $31^\circ$, the predicted probability of any joint failing occurring would be 82%, the probability of at least one joint experiencing failure would be effectively 100% so flights at such temperatures should be avoided.
 
-```{r}
+```{r, warning=FALSE}
 library(stargazer)
 stargazer(mod.fit.lr1,mod.fit.lr2, mod.fit.lr3, type = "text")
-# odds for binary model
+# odds for binomial model
 summary(mod.fit.lr2)
 1 / exp(mod.fit.lr2$coefficients[2])
 ```

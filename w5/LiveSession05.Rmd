@@ -1,0 +1,205 @@
+---
+title: 'Statistical Methods for Discrete Response, Time Series, and Panel Data: Live Session 5'
+author: "Devesh Tiwari and Jeffrey Yau"
+date: "2/5/2017"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+#Main Topics Covered in Lecture 5:
+
+  - Poisson probability model
+  - Poisson regression model
+  - Parameter estimation and statistical inference
+  - Variable selection (a brief introduction)
+  - Model evaluation, focusing on (in-sample) model fit
+
+#Required Readings:
+
+**BL2015:** Christopher R. Bilder and Thomas M. Loughin. Analysis of Categorical Data with R. CRC Press. 2015.
+
+  - Ch.4.1, 4.2.1 – 4.2.2
+    - skim 4.2.3
+  - 5.1 - 5.4
+    - skim 5.2.3, 5.3
+
+
+# Agenda for the Live Session
+
+  1. Mid-term evaluation (10 minutes)
+  2. Exericse 1 (Estimated Time: Total - 30 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+  3. Exericse 2 (Estimated Time: Total - 30 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+  4. Exericse 3 (Estimated Time: Total - 20 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+
+
+Insert the function to *tidy up* the code when they are printed out
+```{r}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r}
+# Set working directory
+wd <- "~/Documents/JStuff/Teach/w271/LiveSessions/week05" #this is my working directory, and you will have to change it to your own working directory
+setwd(wd)
+
+write.csv(p, file = "PossionEx1.csv")
+```
+
+Imagine we are helping the academic committee of a high school to predict the number awards earned by students based on type of programs the student was enrolled in. The committee provides a small data sample that also includes the score of math final exam in previous years.
+
+# Exericse 1: 
+  - *Estimated Time: Breakout 10 minutes, Classwide disscussion: 10 minutes*
+  - Load the data (from the CSV file, *PossionEx1.csv*)
+  - Examine the dataset:
+    - What is the number of observations?
+    - What is the number of variable? 
+    - Are there any redundant variables?
+    - Are there any missing information?
+    - Are there any duplicated records?
+  - Conduct EDA
+
+
+```{r}
+# Set working directory
+wd <- "~/Documents/JStuff/Teach/w271/LiveSessions/week05" #this is my working directory, and you will have to change it to your own working directory
+setwd(wd)
+
+df = read.csv("PossionEx1.csv", stringsAsFactors = F, header=TRUE, sep=",")
+str(df)
+```
+
+The dataset contains 200 observations and 5 variables, with the variable *X* serving as an ID variable. It looks like it is redundant. We will find out below.
+
+# Checking the number of missing values for each of the variables
+```{r}
+#df[!complete.cases(df),]
+sapply(df, function(x) sum(is.na(x)))
+```
+
+```{r}
+require(Hmisc)
+describe(df)
+```
+
+Note that from the descriptive statistics of each of the variables in the dataset, both X and id variables have 200 unique values. As id variable is provided by the committee and the variable may indicates a unique id for each of the students, I will keep this variable and ignore the X variable. Also, because the id variable is unique, I am going to assume that there is no duplicated obserations (at least for now).
+
+The information above also confirms that there are no missing value.
+
+The *num_awards* is our dependent variable, and the frequency table above shows its (discrete) distribution that has a large mass at zero and tappers off really fast.
+
+The *prog* is the committee's key explanatory variable of interest. It has 3 levels: academic, general, and vocational.
+
+The *math* variable ranges from 33 to 75 with mean and median being at around 52.
+
+
+```{r}
+table(df$num_awards)
+prop.table(table(df$num_awards))
+```
+
+The graph below shows the distribution of the number of awards by program types.
+```{r}
+require(ggplot2)
+ggplot(df, aes(num_awards, fill = prog)) +
+  geom_histogram(binwidth=.5, position="dodge") +
+  ggtitle("Number of Awards by Program Type")
+```
+
+```{r}
+ggplot(df, aes(factor(num_awards), math)) +
+  geom_boxplot(aes(fill = factor(num_awards))) + 
+  geom_jitter() +
+  ggtitle("Math Score by the Number of Awards") + 
+  theme(plot.title = element_text(lineheight=1, face="bold")) 
+```
+
+```{r}
+ggplot(df, aes(factor(prog), math)) +
+  geom_boxplot(aes(fill = factor(prog))) + 
+  geom_jitter() +
+  ggtitle("Math Score by Program Type") + 
+  theme(plot.title = element_text(lineheight=1, face="bold")) 
+```
+
+# Exericse 2: 
+  - *Estimated Time: Breakout 15 minutes, Classwide disscussion: 15 minutes*
+  - Load the data (from the CSV file, *PossionEx1.csv*)
+  - In this lecture, we study Poisson regression model, which is often a good starting points for modeling count data. There are limitations 
+  - Estimate a possion regression model. 
+    - What specification do you choose? Why? How is it related to the EDA you did above?
+    - Do you engineer any features? Why? What's the rationel behind?
+  - Interpret the regression results for both the categorical variable and the numeric variable.
+  - Find the confidence interval of the estimator using confint() function. Interpret the results. Note that you may need to write code to transform the interval to obtain meaningful interpretation.
+  - Conduct the Anova() test. Interpret the results.
+
+```{r}
+summary(poisson.mod1 <- glm(num_awards ~ prog + math, family=poisson(link ="log"), data=df))
+```
+
+
+```{r}
+poisson.mod1$coefficients
+
+100*(exp(poisson.mod1$coefficients) - 1)
+
+```
+
+An example of the interpretation of the model results: Relative to those who chose academic program, the students choosing the general program has a 66% decrease in the number of awards.
+
+Find the confidence interval of the estimator using confint() function. Interpret the results.
+```{r}
+round(confint(poisson.mod1),4)
+```
+
+Conduct the Anova() test. Interpret the results.
+```{r}
+Anova(poisson.mod1)
+```
+
+# Exericse 3: 
+  - *Estimated Time: Breakout 15 minutes, Classwide disscussion: 15 minutes*
+  - Extension to what we covered in async lecture. We calculate the robust standard errors for the parameter estimates to control for mild violation of the distribution assumption that the variance equals the mean. In your breakout session, discuss the codes and results.
+  - How are these confidence interval compared to those above?
+  - Interpret the interval results. Note that you may need to write code to transform the interval to obtain meaningful interpretation.
+  
+```{r}  
+require(sandwich)
+cov.poisson.mod1 <- vcovHC(poisson.mod1, type="HC0")
+
+std.err <- sqrt(diag(cov.poisson.mod1))
+
+r.est <- cbind(Estimate= coef(poisson.mod1), "Robust SE" = std.err,
+"Pr(>|z|)" = 2 * pnorm(abs(coef(poisson.mod1)/std.err), lower.tail=FALSE),
+LL = coef(poisson.mod1) - 1.96 * std.err,
+UL = coef(poisson.mod1) + 1.96 * std.err)
+
+round(r.est,4)
+```  
+  
+  - We use R package *sandwich*, which was introduced in w203, below to obtain the robust standard errors and calculated the p-values accordingly.
+  - Together with the p-values, we have also calculated the 95% confidence interval using the parameter estimates and their robust standard errors.
+
+
+# Exercise 4
+  - *Estimated Time: Breakout 10 minutes, Classwide disscussion: 10 minutes*
+  - Examine the goodness of fit of the model
+  - Interpret the following results.
+  - Explain what is residual deviance.
+
+```{r}
+res.deviance <- with(poisson.mod1, cbind(res.deviance = deviance, df = df.residual,
+  p = pchisq(deviance, df.residual, lower.tail=FALSE)))
+
+round(res.deviance,4)
+```
+
+  - The residual deviance is the difference between the deviance of the current model and the maximum deviance of the ideal model where the predicted values are identical to the observed.
+  - In this case, we conclude that the model fits reasonably well because the goodness-of-fit chi-squared test is not statistically significant.
+
+
+
+
+
+

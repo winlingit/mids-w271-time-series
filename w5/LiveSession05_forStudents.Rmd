@@ -1,0 +1,113 @@
+---
+title: 'Statistical Methods for Discrete Response, Time Series, and Panel Data: Live Session 5'
+author: "Devesh Tiwari and Jeffrey Yau"
+date: "2/5/2017"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+#Main Topics Covered in Lecture 5:
+
+  - Poisson probability model
+  - Poisson regression model
+  - Parameter estimation and statistical inference
+  - Variable selection (a brief introduction)
+  - Model evaluation, focusing on (in-sample) model fit
+
+#Required Readings:
+
+**BL2015:** Christopher R. Bilder and Thomas M. Loughin. Analysis of Categorical Data with R. CRC Press. 2015.
+
+  - Ch.4.1, 4.2.1 – 4.2.2
+    - skim 4.2.3
+  - 5.1 - 5.4
+    - skim 5.2.3, 5.3
+
+
+# Agenda for the Live Session
+
+  1. Mid-term evaluation (10 minutes)
+  2. Exericse 1 (Estimated Time: Total - 30 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+  3. Exericse 2 (Estimated Time: Total - 30 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+  4. Exericse 3 (Estimated Time: Total - 20 minutes (Breakout 15 minutes, Classwide disscussion: 15 minutes)
+
+
+Insert the function to *tidy up* the code when they are printed out
+```{r}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r}
+# Set working directory
+wd <- "~/Documents/JStuff/Teach/w271/LiveSessions/week05" #this is my working directory, and you will have to change it to your own working directory
+setwd(wd)
+
+write.csv(p, file = "PossionEx1.csv")
+```
+
+Imagine we are helping the academic committee of a high school to predict the number awards earned by students based on type of programs the student was enrolled in. The committee provides a small data sample that also includes the score of math final exam in previous years.
+
+# Exericse 1: 
+  - *Estimated Time: Breakout 10 minutes, Classwide disscussion: 10 minutes*
+  - Load the data (from the CSV file, *PossionEx1.csv*)
+  - Examine the dataset:
+    - What is the number of observations?
+    - What is the number of variable? 
+    - Are there any redundant variables?
+    - Are there any missing information?
+    - Are there any duplicated records?
+  - Conduct EDA
+
+
+```{r}
+# YOUR CODE TO BE HRE
+```
+
+
+# Exericse 2: 
+  - *Estimated Time: Breakout 15 minutes, Classwide disscussion: 15 minutes*
+  - Load the data (from the CSV file, *PossionEx1.csv*)
+  - In this lecture, we study Poisson regression model, which is often a good starting points for modeling count data. There are limitations 
+  - Estimate a possion regression model. 
+    - What specification do you choose? Why? How is it related to the EDA you did above?
+    - Do you engineer any features? Why? What's the rationel behind?
+  - Interpret the regression results for both the categorical variable and the numeric variable.
+  - Find the confidence interval of the estimator using confint() function. Interpret the results. Note that you may need to write code to transform the interval to obtain meaningful interpretation.
+  - Conduct the Anova() test. Interpret the results.
+
+```{r}
+# YOUR CODE TO BE HRE
+```
+
+# Exericse 3: 
+  - *Estimated Time: Breakout 15 minutes, Classwide disscussion: 15 minutes*
+  - Extension to what we covered in async lecture. We calculate the robust standard errors for the parameter estimates to control for mild violation of the distribution assumption that the variance equals the mean. In your breakout session, discuss the codes and results.
+  - How are these confidence interval compared to those above?
+  - Interpret the interval results. Note that you may need to write code to transform the interval to obtain meaningful interpretation.
+  
+```{r}  
+require(sandwich)
+cov.poisson.mod1 <- vcovHC(poisson.mod1, type="HC0")
+
+std.err <- sqrt(diag(cov.poisson.mod1))
+
+r.est <- cbind(Estimate= coef(poisson.mod1), "Robust SE" = std.err,
+"Pr(>|z|)" = 2 * pnorm(abs(coef(poisson.mod1)/std.err), lower.tail=FALSE),
+LL = coef(poisson.mod1) - 1.96 * std.err,
+UL = coef(poisson.mod1) + 1.96 * std.err)
+
+round(r.est,4)
+```  
+
+
+# Exercise 4
+  - *Estimated Time: Breakout 10 minutes, Classwide disscussion: 10 minutes*
+  - Examine the goodness of fit of the model
+  - Interpret the following results.
+  - Explain what is residual deviance.
+
+```{r}
+# YOUR CODE TO BE HRE
+```

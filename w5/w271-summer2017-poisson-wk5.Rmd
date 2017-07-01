@@ -1,0 +1,262 @@
+---
+title: "Live Session Week 5: Analyzing count data - Poisson model"
+output: pdf_document
+date: "June 13, 2017"
+author: "Devesh Tiwari"
+---
+
+# Content for this week
+
+- Poisson probability model
+
+- Poisson regression model
+
+- Model for mean: log link
+
+- Parameter estimation and statistical inference
+
+- Variable selection
+
+- Model evaluation
+
+# Readings for this week
+
+*Christopher R. Bilder and Thomas M. Loughin. Analysis of Categorical Data with R. CRC
+Press. 2015*
+
+Ch.4.1, 4.2.1 – 4.2.3, 5.1 - 5.4
+ 
+- Skim the following sections 5.2.3, 5.3
+
+
+# Agenda
+
+1. Review questions: Thinking about poisson (20 mins)
+
+2. Breakout Session: EDA and variable transformations (25 mins)
+
+3. Breakout Session: Model interpretaion (20 mins)
+
+4. Group discussion: Residuals (time remaining)
+
+# Breakout Session 1: Review Question (breakout groups: 10 mins in breakout session, 10 mins group discussion)
+
+Today we are going to explore the relationship between a person's age and the number of medical visits they make in a year. Details of this dataset are provided below. Suppose that you were interested in understanding the relationship between the number of medical visits, age, and income. In particular, you are interested in whether we should include an interaction-term between age and income in the model. With that in mind, please answer the following questions.
+
+1. What is over-dispersion and how would you diagnose whether it might be a problem during the EDA stage? What else are you looking out for when examining the dependent variable?
+
+In a poisson distribution, the mean equals the variance. Over-dispersion is when the variance is greater than the mean. In addition to checking for over-dispersion, we should check to see if the distribution of our dependent variable resembles a poisson.
+
+2. Imagine that you ran a linear regression and a poisson model (with no interaction terms). How would you interpret $\hat\beta_{ols, age}$? $\hat\beta_{poisson,age}$? Why is poisson prefered to OLS?
+
+Coefficients from an OLS regression are constant over all values of X and the dependent variables. This is not the case for coefficients from a poisson regression, which represents the impact of a change in a covariate value in terms of a percentage impact on the dependent variable.
+
+3. How would you test whether you need to include the interaction term? Talk about all of the ways in which you could test this.
+
+I would not use regular goodness of fit measures. Instead, I would use an IC metric or a likelihood ratio test.
+
+# Introducing the data
+We are going to use data from the RAND Health Insurance Experiment, which was studied by: 
+
+P. Deb and P.K. Trivedi (2002), "The Structure of Demand for Medical Care: Latent Class versus Two-Part Models," Journal of Health Economics, 21, 601-625.
+
+The data can be found at http://cameron.econ.ucdavis.edu/mmabook/mmadata.html, the file is called randdata.dta (Stata format, more on that in a minute). They do not provide a lot of documentation for this dataset, but they have provided some well-documented code here: http://cameron.econ.ucdavis.edu/mmabook/mma20p1count.txt.
+
+Today, our dependent variable of interest is *mdvis*, which corresponds to the number of medical visits a patient makes in a given year. Our independent variable of interest is *xage*, which corresponds to patients' age. You need to load the library *foreign* in order to read in datasets in this format.
+
+```{r}
+rm(list = ls())
+library(foreign)
+library(stargazer)
+
+path <- "~/Documents/Projects/MIDS/Summer 2017/live_sessions/week5"
+setwd(path)
+df <- read.dta("randdata.dta")
+names(df)
+head(df)
+
+# This data is a panel dataset
+# Let's just look at one year of the study
+
+df <- df[df$year == 1,]
+```
+
+# Breakout Session 2: (15 mins in breakout session; 10 minutes group discussion) 
+
+1. Conduct univariate EDAs on $mdvis$ and $xage$. Be sure to note if there are any missing values present. What do you notice about age? Do you think that using a poisson model is appropriate for $mdvis$?
+
+The variance of $mdvis$ is much larger than it's mean, so I am concerned about over-dispersion. In addition, it seems as if $mdvis$ is generated from an exponential distribution and not poisson! For the sake of this live-session, I will still use poisson regression.
+
+2. Examine the bivariate EDA plot I provide below. Clearly, the relationship between $mdvis$ and $xage$ is not linear! How would you determine the appropriate number of polynomial terms to include in the model?
+
+
+3. In addition to using a polynomial transformation, can you think of other transformations you can make? What are they?
+
+
+
+4. Feel free to conduct similar EDAs on *income* and *linc* (income and log-income respectively).
+
+```{r}
+#hist(df$mdvis)
+# lots of zeros
+mean(df$mdvis)
+var(df$mdvis)
+
+rel.freq <- data.frame(table(df$mdvis) / length(df$mdvis))
+names(rel.freq) <- c("observed", "rel.freq")
+y <- seq(from = 0, to = 20)
+y.pois <- dpois(y, lambda = mean(df$mdvis))
+y.exp <- dexp(y, rate = 1/mean(df$mdvis))
+Y <- data.frame(cbind(y, y.pois, y.exp))
+YY <- merge(Y, rel.freq, by.x = 'y', by.y = 'observed',
+            all.x = TRUE)
+YY$rel.freq <- ifelse(is.na(YY$rel.freq), 0, YY$rel.freq)
+
+
+plot(YY$y - 0.1, YY$y.pois, type = "h", col = "red", ylim = range(YY[,c("y.pois", "rel.freq")]), xlab = "Number of visits", ylab = "probability", 
+     main = "Observed v Poisson")
+lines(YY$y + 0.1, YY$rel.freq, type = "h", col = "blue")
+legend(x = 15, y = 0.25, legend = c("Observed", "Poisson"),
+       col = c("blue", "red"), lwd = c(2,2))
+
+plot(YY$y - 0.1, YY$y.exp, type = "h", col = "red", ylim = range(YY[,c("y.exp", "rel.freq")]), xlab = "Number of visits", ylab = "probability", 
+     main = "Observed v Exponential")
+lines(YY$y + 0.1, YY$rel.freq, type = "h", col = "blue")
+legend(x = 12, y = 0.3, legend = c("Observed", "Exponential"),
+       col = c("blue", "red"), lwd = c(2,2))
+
+
+
+```
+
+```{r}
+# Bivariate plot
+lo <- loess(df$mdvis ~ df$xage)
+par(mfrow = c(1,2))
+plot(df$xage, df$mdvis, pch = 19, cex = 0.1,
+     xlab = "Age", ylab = "Number of vists to clinic")
+points(df$xage, lo$fitted, col = 'red', pch = 19,
+       cex = 0.5)
+
+plot(df$xage, df$mdvis, pch = 19, cex = 0.1,
+     xlab = "Age", ylab = "Number of vists to clinic",
+     ylim = c(0,10))
+points(df$xage, lo$fitted, col = 'red', pch = 19,
+       cex = 0.5)
+
+```
+
+
+# Breakout Sesssion 3: Interpretation (10 mins in breakout groups, 10 mins discussion)
+
+I estimated two poisson models below. One model is a bi-variate model in which *xage* is the sole regressor and the other model includes a square term.
+
+1. Interpret the coefficients of each model. Do older patients visit medical facilities more than younger patients? Note, in the interest of time I am not asking you to conduct any statistical tests, but by now you should be able to assess the model's overall significnce and the statistical significance of the coefficients!
+
+2. Determine whether or not the second model better explains the data than the first model. In addition, determine which order polynomial is the optimal number.
+
+Notice that the BIC is at its lowest at order = 5, but that model does not seem to perform much better than an order 3 polynomial.
+
+3. If you have time, generate some predicted values for each model.
+
+```{r}
+mod.age1 <- glm(mdvis ~ xage, data = df,
+                family = 'poisson')
+
+mod.age2 <- glm(mdvis ~ xage + I(xage^2), data = df,
+                family = 'poisson')
+
+mod.age3 <- glm(mdvis ~ poly(xage, 3), data = df,
+                family = 'poisson')
+
+mod.age4 <- glm(mdvis ~ poly(xage, 4), data = df,
+                family = 'poisson')
+
+mod.age5 <- glm(mdvis ~ poly(xage, 5), data = df,
+                family = 'poisson')
+
+mod.age6 <- glm(mdvis ~ poly(xage, 6), data = df,
+                family = 'poisson')
+
+
+
+summary(mod.age1)
+summary(mod.age2)
+#stargazer(mod.age1, mod.age2, type = 'text', summary = FALSE)
+
+
+ 
+
+## What is optimal order?
+calculate_bic_glm <- function(order){
+  m0 <- glm(mdvis ~ poly(xage, order),
+            data = df, family = 'poisson')
+  
+  bic <- BIC(m0)
+  return(bic)
+}
+
+
+order <- seq(1:10)
+bics <- sapply(order, function(x) calculate_bic_glm(x))
+
+plot(order, bics, pch = 19, 
+     xlab = "Polynomial order",
+     ylab = "BIC", main = "Comparing BICs of polynomial tranformations of age")
+
+
+## Predicted probability charts
+
+generate_predicted_prob_charts <- function(mod, title = NA){
+  count.hat <- predict.glm(mod, 
+                           newdata = data.frame(xage = df$xage),
+                           type = 'response')
+  lo <- loess(df$mdvis ~ df$xage)
+  
+  plot(df$xage, df$mdvis, pch = 19, cex = 0.2, ylim = c(0,8),
+       xlab = "age", ylab = "Clinic visits", main = title)
+  points(df$xage, count.hat, col = "blue", pch = 19, cex = 0.75)
+  points(df$xage, lo$fitted, col = "red", pch = 19, cex = 0.75)
+}
+
+generate_predicted_prob_charts(mod.age1, "Linear age term")
+generate_predicted_prob_charts(mod.age2, "Second order polynomial")
+generate_predicted_prob_charts(mod.age3, "Third order polynomial")
+generate_predicted_prob_charts(mod.age4, "Fourth order polynomial")
+generate_predicted_prob_charts(mod.age5, "Fifth order polynomial")
+generate_predicted_prob_charts(mod.age6, "Sixth order polynomial")
+
+```
+
+
+# Group discussion: Residuals and other post-modeling stuff
+
+1. Why do we standardize residuals?
+
+2. What are the causes of over-dispersion?
+
+3. Examine and comment on the residual plots below.
+
+
+```{r}
+
+create_residual_charts <- function(model){
+  mod1.stdresid <- rstandard(model, type = 'pearson')  
+  lo <- loess(mod1.stdresid ~ model$fitted.values)
+  par(mfrow = c(2,2))
+
+  plot(model$fitted.values, mod1.stdresid, xlab = "Fitted Values",
+       ylab = "Std. Pearson Resid", pch = 19, cex = 0.2)
+  points(model$fitted.values, lo$fitted, pch = 19, col = 'red', cex = 0.5)
+  
+  plot(model$fitted.values, mod1.stdresid, xlab = "Fitted Values",
+       ylab = "Std. Pearson Resid", pch = 19, cex = 0.2, ylim = c(-2,5))
+  points(model$fitted.values, lo$fitted, pch = 19, col = 'red', cex = 0.5)
+  hist(mod1.stdresid)
+}
+
+
+create_residual_charts(mod.age1)
+create_residual_charts(mod.age5)
+```
+

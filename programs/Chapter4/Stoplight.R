@@ -8,7 +8,7 @@
 ########################################################################
 # Read in data
 
-stoplight <- read.csv(file  = "C:\\data\\stoplight.csv")
+stoplight <- read.csv(file  = "./w271-time-series/programs/Chapter4/stoplight.csv")
 head(stoplight)
 
 

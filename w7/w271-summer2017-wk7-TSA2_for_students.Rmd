@@ -1,0 +1,143 @@
+---
+title: 'Statistical Methods for Discrete Response, Time Series, and Panel Data: Live Session 7'
+author: "Devesh Tiwari"
+date: "June 27, 2017"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+# Main topics covered in Week 6
+- Classical Linear Regression Model (CLM) for time series data (You will have to review CLM by yourself)
+
+- Linear time-trend regression
+
+- Goodness of Fit Measures (for Time Series Models)
+
+- Time-series smoothing techniques
+
+- Exploratory time-series data analysis
+
+- Autocorrelation function of different time series
+
+# Required Readings
+- CM2009: Ch. 5.1 – 5.3
+
+- SS2016: Ch.2
+
+
+# Agenda
+
+1. Announcement: No class next week. Attend the Wed class or Thursday makeup session.
+
+2. Review questions (20 mins)
+
+3. Insepecting automotive sales in the US (30 mins)
+
+4. Linear time trend regression (30 mins)
+
+5. Wrap up
+
+# Breakout Session 1: Review Questions (10 mins in breakout rooms + 10 minutes discussion)
+
+1. What does it mean to decompose a time-series and what would we find when we decompose one?
+
+2. What is Gaussian White Noise? Describe its properties and importance in time-series analysis
+
+3. Time-series analysis requires us to create many models. What are the hallmarks of a "good" model?
+
+# Breakout Session 2: Inspecting automotive sales in the US (10 mins in breakout + 20 mins group discussion)
+
+An article by Daniel Gross of slate.com (http://www.slate.com/articles/business/moneybox/2017/05/the_auto_industry_is_in_trouble_and_it_could_cause_bigger_problems.html) points out that auto-sales have "hit a wall" and that monthly sales in 2017 are less than what they were a year prior. Let's dig a little deeper into this by analyzing data from the St. Louis Federal Reserve on total auto sales in the United States (https://fred.stlouisfed.org/series/TOTALNSA).
+
+We will not directly address whether monthly auto sales have been declining compared to their prior year values. Instead, let's examine whether or not there is evidence that automotive sales have been decreasing in 2017.
+
+This is a monthly time-series data that is **not** seasonally adjusted!
+
+1. Use either a moving average filter (filter) or a kernel smoother (ksmooth) to examine the underlying trend in this data. What do you notice about this data? Is there a trend? Seasonality?
+
+2. For a given filter, what parameters did you have control over? When maniuplating that parameter, what do you find?
+
+3. Based on your examination, do you think that automotove sales have been decreasing? How would you go about examining this with a model?
+
+```{r}
+rm(list = ls())
+library(psych)
+
+path <- "./"
+setwd(path)
+df <- read.csv("vehicle_sales_NSA.csv", stringsAsFactors = FALSE)
+head(df)
+tail(df)
+describe(df)
+
+hist(df$TOTALNSA)
+cars <- ts(df$TOTALNSA, frequency = 12, start = c(1976,1))
+plot(cars)
+acf(cars, lag.max = 48)
+pacf(cars, lag.max = 48)
+# Insert code here for moving average or kernel filters
+
+# moving average smoother
+wgts = c(.5, rep(1,11), .5)/12
+carsf = filter(cars, sides=2, filter=wgts)
+plot(cars)
+lines(carsf, lwd=2, col=4)
+
+# kernel smoother
+plot(cars)
+lines(ksmooth(time(cars), cars, 'normal', bandwidth=4), lwd=2, col=4)
+```
+
+# Breakout Session 3: Linear time regression (10 mins in breakout; 20 mins discussion)
+
+Let's focus our attention on the time-period after 2009 in order to examine the trend in automotive sales. In the code below, I conduct an OLS regression on the number of car sales and time; for this analysis, I include time as a quadratic term. Examine the output below and answer the following questions:
+
+1. Based on your interpretation of the model, what is your interpretation about car sales in the US during this time period? Do you share Daniel Gross's concern that we need to be worried about the US economy? 
+
+2. Examine the residuals. Do they resemble gaussian white noise? Based on your residuals analysis, does your interpretation of the results above change?
+
+3. What other changes would you make to this model?
+
+```{r}
+## Subset the time-series
+cars.subset <- window(cars, start = c(2009,1))
+plot(cars.subset)
+sales <- as.numeric(cars.subset)
+time <- as.numeric(time(cars.subset))
+
+
+model1 <- lm(sales ~ time + I(time^2))
+summary(model1)
+
+#INSERT CODE HERE FOR FURTHER ANALYSIS, RESIDUALS ANALYSIS, ETC.
+
+plot(model1$residuals)
+hist(model1$residuals)
+```
+
+# Overview of modelling time-series data
+
+Over the next few weeks, we will learn how to analyze time-series data using methods that treat the current observation as some function of its prior observations. Next week, we will talk about two types of proccesses, the AR(p) and MA(q). As mentioned before, we will learn how to handle more complicated data, which in turns makes the modelling process a little more complicated. Having said that, the broad outlines of the modeling process are the same:
+
+1. EDA
+During the EDA phase, we want to get a sense of how the time-series data behaves. In particular, we want to examine in if we need to transform the data in anyway in order to make it suitable for analysis. All of our methods require us to model data that are *weakly stationary*. This is where we determine if the time-series fits that criteria.
+
+We also examine the ACF and PACF plots in order to form our initial guesses as to how we should model the data.
+
+2. Model building
+Once we have transformed the data, we have to model it. At this stage, we need to determine the following:
+
+(a) Do we need to include an AR component? an MA compent?
+
+(b) How many lags of each should we include?
+
+It should be apparent that we will estimate *many* models in this stage. So our task here is selecting a handful models that we think are good candidates. At this stage, we typically use a combination of ICs and residuals analysis to make that determination. 
+
+3. Model evaluation: Out of sample fit
+Once we have a handful of models from step 2, we compare them head to head based on their predictive accuracy. We then select one of these models as *our* model.
+
+4. Generate forecasts and answer the question
+Once we have a final model, we should generate some forecasts. Sometimes, you might want to generate forecasts using more than one model. While you are free to do so, at the end of a modeling exercise, you should select one model to be your chosen model.
+
+Final note:
+There are functions in R that can select a model for you. *DO NOT* use them in this class for purposes other than checking or validating your own work. Even then, be sure to read the documentation so you understand how the function is selecting a model.

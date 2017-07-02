@@ -10,7 +10,7 @@
 #####################################################################
 # Enter the data
 
-alldata <- read.table(file = "C:\\data\\BirdCounts.csv", sep = ",", header = TRUE)
+alldata <- read.table(file = "./w271-time-series/programs/Chapter4/BirdCounts.csv", sep = ",", header = TRUE)
 head(alldata)
 
 #####################################################################
@@ -20,7 +20,7 @@ head(alldata)
 M1 <- glm(formula = Birds ~ Loc, family = poisson(link = "log"), data = alldata)
 summary(M1)
 library(car)
-Anova(M1, test = "Chisq") #Also could use Anova() from car package
+anova(M1, test = "Chisq") #Also could use Anova() from car package
 
 # Get predicted means and CIs
 pred.data <- data.frame(Loc = c("ForA", "ForB", "Frag", "Edge", "PasA", "PasB"))

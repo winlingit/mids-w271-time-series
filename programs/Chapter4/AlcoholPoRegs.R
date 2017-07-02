@@ -11,7 +11,7 @@
 #####################################################################
 # Read the data
 
-  dehart <- read.table("C:\\Data\\DeHartSimplified.csv", header = TRUE, sep = ",", na.strings = " ")
+  dehart <- read.table("./w271-time-series/programs/Chapter4/DeHartSimplified.csv", header = TRUE, sep = ",", na.strings = " ")
   head(dehart)
 
   # Reduce data to what is needed for examples

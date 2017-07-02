@@ -113,7 +113,12 @@ residualPlots(mod2)
   
     d) Carry out the GOF test described on page 296 using the PostFitGOFTest() function available in the PostFitGOFTest.R program of the same name from our website. Use the default number of groups. (M/5 when M < 100)
         i. State the hypotheses, test statistic and p-value, and interpret the results.
-        ii. Plo the Pearson residuals for the groups against the interval centers (availabe in the pear.res and centers components, respectively, of the list returned by the function). Use this polot and the resiudal plots from part (c) to explain the results.
+        
+        The hypothesis is the observed residuals of our model predictions for the 20 quantiles is not significantly different from the predictions thus indicating a good model fit. The GOF test gives us a test statistic of 776.2152 which is the total Pearson residuals at our 20 quantiles. This test statistic gives a p-value of effectively 0 on chi-squared distribution with 18 degrees of freedom indicating there is some evidence that our model is not well fit. This evidence support previous graphical analysis already conducted above.
+        
+        ii. Plot the Pearson residuals for the groups against the interval centers (availabe in the pear.res and centers components, respectively, of the list returned by the function). Use this plot and the resiudal plots from part (c) to explain the results.
+        
+        As you can see in the plot below the Pearson residuals for out 20 quantiles range quite drastically from just below 0 to over 8. These residuals are much higher than we would expect if our model was an accurate representation of the data. In addition you can see the model is not consistent and the residuals vary based on predicted values.
         
 ```{r}
 
@@ -159,6 +164,102 @@ plot(results$pear.res~results$centers)
 ```{r}
 plot(mod1)[4]
 plot(mod2)[4]
+
+glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
+
+ # Which set of plots to show
+ show <- rep(FALSE, 2)  # Idea from plot.lm()
+ show[which.plots] <- TRUE
+
+ # Main quantities: Pearson and deviance residual, model Pearson and deviance stats
+ pear <- residuals(mod.fit, type = "pearson")
+ dres <- residuals(mod.fit, type = "deviance")
+ x2 <- sum(pear^2)
+ N <- length(pear)
+ P <- length(coef(mod.fit))
+ # Hat values (leverages)
+ hii <- hatvalues(mod.fit)
+ # Computed quantities: Standardized Pearson residual, Delta-beta, Delta-deviance
+ sres <- pear/sqrt(1-hii)
+# D.beta <- (pear^2*hii/(1-hii)^2)
+# cookD <- D.beta / (P * summary(mod.fit)$dispersion)
+ cookD <- pear^2 * hii / ((1-hii)^2 * (P) * summary(mod.fit)$dispersion) 
+ D.dev2 <- dres^2 + hii*sres^2
+ D.X2 <- sres^2
+
+ yhat <- fitted(mod.fit)
+
+ # Plots against fitted values 
+ if(show[1] == TRUE) {
+  x11(height = 7,width = 15, pointsize = 15)
+  par(mfrow = c(1,4), lty = "dotted")
+  plot(x = yhat, y = hii, xlab = "Estimated Mean or Probability", ylab = "Hat (leverage) value",
+   ylim = c(0, max(hii,3*P/N)))
+  abline(h = c(2*P/N,3*P/N))
+
+  plot(x = yhat, y = D.X2, xlab = "Estimated Mean or Probability", ylab = "Approx change in Pearson stat",
+   ylim = c(0, max(D.X2,9)))
+  abline(h = c(4,9), lty = "dotted")
+
+  plot(x = yhat, y = D.dev2, xlab = "Estimated Mean or Probability", ylab = "Approx change in deviance",
+   ylim = c(0, max(D.dev2,9)))
+  abline(h = c(4,9), lty = "dotted")
+
+  plot(x = yhat, y = cookD, xlab = "Estimated Mean or Probability", ylab = "Approx Cook's Distance",
+   ylim = c(0, max(cookD, 1)))
+  abline(h = c(4/N,1), lty = "dotted")
+ }
+ 
+ # Plots against hat values
+ if(show[2] == TRUE) {
+  x11(height = 6, width = 12, pointsize = 20)
+  par(mfrow = c(1,3))
+  plot(x = hii, y = D.X2, xlab = "Hat (leverage) value", ylab = "Approx change in Pearson stat",
+   ylim = c(0, max(D.X2, 9)), xlim = c(0, max(hii,3*P/N)))
+  abline(h = c(4,9), lty = "dotted")
+  abline(v = c(2*P/N,3*P/N), lty = "dotted")
+
+  plot(x = hii, y = D.dev2, xlab = "Hat (leverage) value", ylab = "Approx change in deviance",
+   ylim = c(0, max(D.dev2,9)), xlim = c(0, max(hii,3*P/N)))
+  abline(h = c(4,9), lty = "dotted")
+  abline(v = c(2*P/N,3*P/N), lty = "dotted")
+
+  plot(x = hii, y = cookD, xlab = "Hat (leverage) value", ylab = "Approx Cook's Distance",
+   ylim = c(0, max(cookD, 1)), xlim = c(0, max(hii,3*P/N)))
+  abline(h = c(4/N,1), lty = "dotted")
+  abline(v = c(2*P/N,3*P/N), lty = "dotted")
+ }
+
+ # Listing of values to check
+ # Create flags to identify high values in listing
+ hflag <- ifelse(test = hii > 3*P/N, yes = "**", no = 
+          ifelse(test = hii > 2*P/N, yes = "*", no = ""))
+ xflag <- ifelse(test = D.X2 > 9, yes = "**", no = 
+          ifelse(test = D.X2 > 4, yes = "*", no = ""))
+ dflag <- ifelse(test = D.dev2 > 9, yes = "**", no = 
+          ifelse(test = D.dev2 > 4, yes = "*", no = ""))
+ cflag <- ifelse(test = cookD > 1, yes = "**", no = 
+          ifelse(test = cookD > 4/N, yes = "*", no = ""))
+
+ chk.hii2 <- which(hii > 3*P/N)
+ chk.DX22 <- which(D.X2 > 9 | (D.X2 > 4 & hii > 2*P/N))
+ chk.Ddev2 <- which(D.dev2 > 9 | (D.dev2 > 4 & hii > 2*P/N))
+ chk.cook2 <- which(cookD > 4/N)
+
+ all.meas <- data.frame(h = round(hii,2), hflag, Del.X2 = round(D.X2,2), xflag,
+             Del.dev = round(D.dev2,2), dflag, Cooks.D = round(cookD,3), cflag)
+
+ if(print.output == TRUE) {
+  cat("Potentially influential observations by any measures","\n")
+  print(all.meas[sort(unique(c(chk.hii2, chk.DX22, chk.Ddev2, chk.cook2))),])
+  cat("\n","Data for potentially influential observations","\n")
+  print(cbind(mod.fit$data, yhat = round(yhat, 3))[sort(unique(c(chk.hii2, chk.DX22, chk.Ddev2, chk.cook2))),])
+ }
+
+ data.frame(hat  =  hii, CD = cookD, delta.Xsq = D.X2, delta.D = D.dev2)
+}
+
+glmInflDiag(mod2, print.output = TRUE, which.plots = 1:2)
 ```
 
 25. Remove the influential crab from the analysis and repeat the steps in Question 23. Has this fixed the problems with the model? Are there any other problems with the model, and what could be done to solve these problems?

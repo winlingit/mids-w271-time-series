@@ -48,13 +48,12 @@ a. Fit a Poisson regression model with a log link using all four explanatory var
 LRT shows moderate evidence that color has a significant effect (p-value < 0.05) on the mean count of satellite males and strong evidence that weight does so as well (p-value < 0.003.  Specifically, darker and heavier females are associated with higher counts of satellite males. 
 
 ```{r}
-
 # fit model
 glm.Ha = glm(formula = Sat ~ Color + Spine + Width + Weight, family = poisson(link = 'log'), data = dt)
 summary(glm.Ha)
 
 # LRT to check significance of variables
-Anova(glm.Ha, test = 'LR')
+Anova(glm.Ha)
 ```
 
 b. Compute deviance/df and interpret its value.

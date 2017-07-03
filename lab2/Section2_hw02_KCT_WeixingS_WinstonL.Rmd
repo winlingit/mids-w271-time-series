@@ -102,12 +102,12 @@ round(c(devdf = dev.df[2], concern = t1, poor = t2), 3)
  
 c. Examine residual diagnostics and identify any potential problems with the model.
     
-- Residual plots show that there is no systematic patterns fo residual distribution, except for a few outliners. E(u|x) is slightly away from 0, while the homoskedaticity is highly preserved. Again, there are a few outliers that deviate expected residuals from 0.  The presence of large residuals may indicate overdispersion and imply that an important explanatory variable has been omitted by the model or the distribution used to estimate the model is not appropriate.  More influence of outliners will be discussed in 24.
+- Residual plots show that there is no systematic patterns for residual distribution, except for a few outliners. E(u|x) is slightly away from 0, while the homoskedaticity is highly preserved. Again, there are a few outliers that deviate expected residuals from 0.  The presence of large residuals may indicate overdispersion and imply that an important explanatory variable has been omitted by the model or the distribution used to estimate the model is not appropriate.  More influence of outliners will be discussed in 24.
   
 ```{r, warning=FALSE}
 
 # plot(allEffects(mod2))
-residualPlots(mod2)
+residualPlots(mod1)
 
 # # standardized pearson residuals - appear to be random
 # std.resid = rstandard(mod2, type = c('pearson'))
@@ -297,4 +297,13 @@ stargazer(mod2,mod2.3,type="text")
 # results2 <- PostFitGOFTest(obs2,preds2)
 # results2
 # plot(results2$pear.res~results2$centers)
+
+residualPlots(mod1.3)
+
+preds2 <- predict(mod1.3, hs)
+obs2 <- hs$Sat
+results2 <- PostFitGOFTest(obs2,preds2)
+# results
+
+plot(results2$pear.res~results2$centers)
 ```

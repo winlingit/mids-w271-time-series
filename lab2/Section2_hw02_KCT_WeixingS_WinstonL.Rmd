@@ -160,7 +160,7 @@ plot(results$pear.res~results$centers)
 
   - In mod1 (ordinal), only one data point (No.165) shows a Cook's distance above 0.5, meaning a high influence on the fitting. In mod2 (categorical), this outliner shows a Cook's distance slightly below 0.5. The influence of this outliner is reduced by mod2, contributing to a more accurate fitting. 
 
-```{r, echo=FALSE}
+```{r}
 # plot(mod1)[4]
 # plot(mod2)[4]
 
@@ -258,7 +258,7 @@ glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
  data.frame(hat  =  hii, CD = cookD, delta.Xsq = D.X2, delta.D = D.dev2)
 }
 
-glmInflDiag(mod2, print.output = TRUE, which.plots = 1:2)
+glmInflDiag(mod2, print.output = FALSE, which.plots = 1:2)
 ```
 
 25. Remove the influential crab from the analysis and repeat the steps in Question 23. Has this fixed the problems with the model? Are there any other problems with the model, and what could be done to solve these problems?

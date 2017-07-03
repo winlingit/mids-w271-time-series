@@ -16,32 +16,52 @@ library(effects)
 
 # The Lab
   
-  - Even though it is not included in these questions, conduct a comprehensive Exploratory Data Analysis (EDA) analysis, which includes both graphical and tabular analysis, as taught in this course.
+#### 1. Even though it is not included in these questions, conduct a comprehensive Exploratory Data Analysis (EDA) analysis, which includes both graphical and tabular analysis, as taught in this course.
 
-    - According to online information of this study,
-    - Color = female crab’s color (1,2,3,4; 1=lightest to 4=darkest)
-    - Spine = female crab’s spine condition (1 = both good, 2= one worn or broken, 3=both worn or broken)
-    - Width = female crab’s carapace width (cm)
-    - Weight = female crab’s weight (kg)
+According to online information of this study (http://isites.harvard.edu/fs/docs/icb.topic79671.files/glmhand1.pdf):
 
+  - Color = female crab’s color (1,2,3,4; 1=lightest to 4=darkest)
+  
+  - Spine = female crab’s spine condition (1 = both good, 2= one worn or broken, 3=both worn or broken)
+  
+  - Width = female crab’s carapace width (cm)
+  
+  - Weight = female crab’s weight (kg)
 
+Insights from scatterplots:
+
+  - Width and weight have a clear positive linear correlation, which makes sense since a heavier horse shoe crab should be wider
+  
+  - Sat shows a frequency distribution that might be fitted by Poisson model.
+  
 ```{r, warning=FALSE}
 hs <- read.csv("HorseshoeCrabs.csv")
 hs$Color.cat <- factor(hs$Color, labels = c("very light", "light", "dark", "very dark"))
 hs$Spine.cat <- factor(hs$Spine, labels = c("2 good", "1 good", "0 good"))
 scatterplotMatrix(hs[c(3,4,5)])
 ```
-- Insights from scatterplots: 1. width and weight have a clear positive linear correlation, which makes sense since a heavier horse shoe crab should be wider; 2. Sat shows a frequency distribution that might be fitted by Poisson model.
+
+Insights from the contingency table and boxplots:
+
+  - Darker color and worse spine health ("0 good") appear to be associated with a lower number of satellite crabs.  However, the strength of the correlation between spine health and satellite crabs is debatable given the low number of observations in the "1 good" category.
+  
+  - For Color, only a few data points locate in the level "very light", which may give rise to a large uncertainty of fitting
+  
+  - For Spine, only a few data points locate in the level "1 good", which may also give rise to a large uncertainty of fitting.
+  
 ```{r}
 xtabs(~Color.cat + Spine.cat, data = hs)
 boxplot(hs$Sat~hs$Color.cat)
 boxplot(hs$Sat~hs$Spine.cat)
 ```
-- Insights from the contingency table and boxplots: darker color and worse spine health ("0 good") appear to be associated with a lower number of satellite crabs.  However, the strength of the correlation between spine health and satellite crabs is debatable given the low number of observations in the "1 good" category.
 
-23. Agresti (2007) provides data on the social behavior of horshoe crabs. These data are contained in hte HorseshoesCrabs.csv file available on our website. Each observation corresponds to one female crab. The response variable is Sat, the number of "satellite" males in her vicinity. Physical measurements of the female - Color (4-level ordinal), Spine (3-level ordinal), Width (cm), and Weight (kg) - are explanatory variables.
+#### 2. Do question 23, 24, 25 in C Chapter 5 (page 351 and 352) of Bilder and Loughin's \textit{Analysis of Categorical Data with R}.
+
+5.23. Agresti (2007) provides data on the social behavior of horseshoe crabs. These data are contained in the HorseshoeCrabs.csv file available on our website. Each observation corresponds to one female crab. The response variable is Sat, the number of “satellite” males in her vicinity. Physical measurements of the female—Color (4-level ordinal), Spine (3-level ordinal), Width (cm), and Weight (kg)—are explanatory variables.
   
-    a) Fit a Poisson regression model with a log link using all four explanatory variables in a linear form. Test their significance and summarize results.
+a. Fit a Poisson regression model with a log link using all four explanatory variables in a linear form. Test their significance and summarize results.
+
+  - Results show that only Color and Weight parameters are statistically significant. LRT also shows strong evidence that the effect of color and weight are statistically significant (p-value < 0.05).
     
 ```{r}
 # Poisson with ordinal variables
@@ -50,8 +70,8 @@ summary(mod1)
 Anova(mod1)
 ```
 
-  - Results show that only Color and Weight parameters are statistically significant. LRT also shows strong evidence that the effect of color and weight are statistically significant (p-value < 0.05).
-
+  - Next, we transform Color and Spine to categorical variables to run Poisson fitting again. It shows similar results with mod1. However, it is noticable that only dark colors (3 & 4) show a significant effect on satellites.
+  
 ```{r}
 # Poisson with categorical variables
 mod2 <- glm(Sat ~ Color.cat + Spine.cat + Width + Weight, family = poisson(link="log"), data=hs)
@@ -59,65 +79,49 @@ summary(mod2)
 Anova(mod2)
 ```
 
-  - Next, we transform Color and Spine to categorical variables to run Poisson fitting again. It shows similar results with mod1. However, it is noticable that only dark colors (3 & 4) show a significant effect on satellites.
+b. Compute deviance/df and interpret its value.
 
-b) Compute deviance/df and interpret its value.
+- Deviance/df, the ratio of residual deviance to residual degrees of freedom, is 3.33.  The ratio is greater  than 1.18, the heuristics indicating that the model is a poor fit (Bilder, p. 293).
+    
 ```{r}
-# calculate residual deviance of Color in mod1
-mod1.1 = glm(Sat ~ Spine + Width + Weight, family = poisson(link="log"), data=hs)
-anova(mod1.1, mod1, test = "Chisq")
-# calculate residual deviance of Weight in mod1
-mod1.2 = glm(Sat ~ Color + Spine + Width, family = poisson(link="log"), data=hs)
-anova(mod1.2, mod1, test = "Chisq")
-# calculate residual deviance of Color in mod2
-mod2.1 = glm(Sat ~ Spine.cat + Width + Weight, family = poisson(link="log"), data=hs)
-anova(mod2.1, mod2, test = "Chisq")
-# calculate residual deviance of Weight in mod2
-mod2.2 = glm(Sat ~ Color.cat + Spine.cat + Width, family = poisson(link="log"), data=hs)
-anova(mod2.2, mod2, test = "Chisq")
+# null model
+mod0 = glm(formula = Sat ~ 1, family = poisson(link = 'log'), data = hs)
 
+# LRT to calculate deviance and df
+lrt = anova(mod0, mod1, test = 'Chisq')
+lrt
+dev.df = lrt$`Resid. Dev`/lrt$`Resid. Df`
 
-###  deviance/df calculations from p.293
+# heuristics for concern with model and poor fit
+t1 = 1 + 2*sqrt(2/lrt$`Resid. Dev`[2])
+t2 = 1 + 3*sqrt(2/lrt$`Resid. Dev`[2])
 
-# # null model
-# glm.Ho = glm(formula = Sat ~ 1, family = poisson(link = 'log'), data = dt)
-# summary(glm.Ho)
-# 
-# # LRT to calculate deviance and df
-# lrt = anova(glm.Ho, glm.Ha, test = 'Chisq')
-# dev.df = lrt$`Resid. Dev`/lrt$`Resid. Df`
-# dev.df[2]
-# 
-# t1 = 1 + 2*sqrt(2/lrt$`Resid. Dev`[2])
-# t1
-# 
-# t2 = 1 + 3*sqrt(2/lrt$`Resid. Dev`[2])
-# t2
-```    
-  - Deviance/df is 3.33 and greater than 1.18, the threshold indicating that the model is a poor fit in Bilder (p. 293).  
-   
-    c) Examine residual diagnostics and identify any potential problems with the model.
+# results
+round(c(devdf = dev.df[2], concern = t1, poor = t2), 3)
+```
+ 
+c. Examine residual diagnostics and identify any potential problems with the model.
+    
+- Residual plots show that there is no systematic patterns fo residual distribution, except for a few outliners. E(u|x) is slightly away from 0, while the homoskedaticity is highly preserved. Again, there are a few outliers that deviate expected residuals from 0.  The presence of large residuals may indicate overdispersion and imply that an important explanatory variable has been omitted by the model or the distribution used to estimate the model is not appropriate.  More influence of outliners will be discussed in 24.
+  
 ```{r, warning=FALSE}
 
-plot(allEffects(mod2))
+# plot(allEffects(mod2))
 residualPlots(mod2)
 
-# standardized pearson residuals - appear to be random
-std.resid = rstandard(mod2, type = c('pearson'))
-plot(std.resid)
-hist(std.resid)
-
+# # standardized pearson residuals - appear to be random
+# std.resid = rstandard(mod2, type = c('pearson'))
+# plot(std.resid)
 ```
-  - The standardized Pearson residuals appear to be random
+
+d. Carry out the GOF test described on page 296 using the PostFitGOFTest() function available in the PostFitGOFTest.R program of the same name from our website. Use the default number of groups. (M/5 when M < 100)
+  i. State the hypotheses, test statistic and p-value, and interpret the results.
   
-    d) Carry out the GOF test described on page 296 using the PostFitGOFTest() function available in the PostFitGOFTest.R program of the same name from our website. Use the default number of groups. (M/5 when M < 100)
-        i. State the hypotheses, test statistic and p-value, and interpret the results.
+  - The hypothesis is the observed residuals of our model predictions for the 20 quantiles is not significantly different from the predictions thus indicating a good model fit. The GOF test gives us a test statistic of 776.2152 which is the total Pearson residuals at our 20 quantiles. This test statistic gives a p-value of effectively 0 on chi-squared distribution with 18 degrees of freedom indicating there is some evidence that our model is not well fit. This evidence support previous graphical analysis already conducted above.
         
-        The hypothesis is the observed residuals of our model predictions for the 20 quantiles is not significantly different from the predictions thus indicating a good model fit. The GOF test gives us a test statistic of 776.2152 which is the total Pearson residuals at our 20 quantiles. This test statistic gives a p-value of effectively 0 on chi-squared distribution with 18 degrees of freedom indicating there is some evidence that our model is not well fit. This evidence support previous graphical analysis already conducted above.
-        
-        ii. Plot the Pearson residuals for the groups against the interval centers (availabe in the pear.res and centers components, respectively, of the list returned by the function). Use this plot and the resiudal plots from part (c) to explain the results.
-        
-        As you can see in the plot below the Pearson residuals for out 20 quantiles range quite drastically from just below 0 to over 8. These residuals are much higher than we would expect if our model was an accurate representation of the data. In addition you can see the model is not consistent and the residuals vary based on predicted values.
+  ii. Plot the Pearson residuals for the groups against the interval centers (availabe in the pear.res and centers components, respectively, of the list returned by the function). Use this plot and the resiudal plots from part (c) to explain the results.
+  
+  - As you can see in the plot below the Pearson residuals for out 20 quantiles range quite drastically from just below 0 to over 8. These residuals are much higher than we would expect if our model was an accurate representation of the data. In addition you can see the model is not consistent and the residuals vary based on predicted values.
         
 ```{r}
 
@@ -145,26 +149,20 @@ PostFitGOFTest = function(obs, pred, g = 0) {
 preds <- predict(mod1, hs)
 obs <- hs$Sat
 results <- PostFitGOFTest(obs,preds)
-results
+# results
 
 plot(results$pear.res~results$centers)
-
-# # run GOF test
-# gof.test = PostFitGOFTest(dt$Sat, glm.Ha$fitted.values)
-
-# # scatterplots for Pearson residuals and interval centers
-# df = data.frame(cbind(pear.res = gof.test$pear.res, centers = gof.test$centers))
-# plt2 = ggplot(df, aes(x = pear.res, y = centers))
-# plt2 + geom_point() + labs(title = 'Horseshoe Crab Data', x = 'Pearson residual', y = 'Interval center')
 ```
   
 24. Conduct an influence analysis. Interpret the results.
 
-The residuals-fitted plot shows that the there is some heteroskedasticity as spread of the residuals increases with the predicted values.  Overall, it appears that the residuals are random and normal, as seen in the QQ plot.  The residuals-leverage plot shows observation 165 to be a highly influential point, which we may remove in order to re-estimate the model.
+  - The residuals-fitted plot shows that the there is some heteroskedasticity as spread of the residuals increases with the predicted values.  Overall, it appears that the residuals are random and normal, as seen in the QQ plot.  The residuals-leverage plot shows observation 165 to be a highly influential point, which we may remove in order to re-estimate the model.
 
-```{r}
-plot(mod1)[4]
-plot(mod2)[4]
+  - In mod1 (ordinal), only one data point (No.165) shows a Cook's distance above 0.5, meaning a high influence on the fitting. In mod2 (categorical), this outliner shows a Cook's distance slightly below 0.5. The influence of this outliner is reduced by mod2, contributing to a more accurate fitting. 
+
+```{r, echo=FALSE}
+# plot(mod1)[4]
+# plot(mod2)[4]
 
 glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
 
@@ -265,21 +263,38 @@ glmInflDiag(mod2, print.output = TRUE, which.plots = 1:2)
 
 25. Remove the influential crab from the analysis and repeat the steps in Question 23. Has this fixed the problems with the model? Are there any other problems with the model, and what could be done to solve these problems?
 
-Excluding observation 165 from the model estimation reduces the residual deviance and deviance/df slightly (from 3.33 to 3.27), but the model is still not well fit to the data based on the heuristic of deviance/df > 1.
+  - In both (ordinal and categorical) models, the removal of the outlier mildly decreases the significance of Color and mildly increases the significance of Weight. The influence of the outlier is limited.  Excluding observation 165 from the model estimation reduces the residual deviance and deviance/df slightly (from 3.33 to 3.27), but the model is still not well fit to the data based on the heuristic of deviance/df > 1.  There are 4 additional points above the top line in the leverage plot (6, 31, 95, 127) that we could remove before restimating a model for better fit.
+
+
+  - Other possible problems and solutions include:
+
+    - Random sampling: From the Q-Q plot above in Problem 24, we can observe that the residual is not well normally distributed. From other residual plots, we observed a slight heteroscedasticity. We have no information about sampling in this study. But a better randomly selected sample and independently and identically distributed observations will help on a better model fitting.
+    
+    - Interactions between parameter. It is possible that weight and color, or spine and color, have interactions. Though it is not studied here, the interaction term may be statistically significant and improve model fitting.
 
 ```{r}
 hs2 <- hs[-165,]
-mod2 <- glm(Sat~Color+Spine+Width+Weight, family = poisson(link="log"), data=hs2)
-summary(mod2)
-Anova(mod2)
-stargazer(mod1,mod2,type="text")
 
-preds2 <- predict(mod2, hs)
-obs2 <- hs$Sat
-results2 <- PostFitGOFTest(obs2,preds2)
-results2
+# compare mod1 and mod1.3(without the outliner)
+mod1.3 <- glm(Sat~Color+Spine+Width+Weight, family = poisson(link="log"), data=hs2)
+#summary(mod1.3)
+#Anova(mod1.3)
+stargazer(mod1,mod1.3,type="text")
 
-plot(results2$pear.res~results2$centers)
+# compare mod2 and mod2.3(without the outliner)
+mod2.3 <- glm(Sat ~ Color.cat + Spine.cat + Width + Weight, family = poisson(link="log"), data=hs2)
+#summary(mod2.3)
+#Anova(mod2.3)
+stargazer(mod2,mod2.3,type="text")
 
-### W will run diagnostics again as in 24
+# mod2 <- glm(Sat~Color+Spine+Width+Weight, family = poisson(link="log"), data=hs2)
+# summary(mod2)
+# Anova(mod2)
+# stargazer(mod1,mod2,type="text")
+# 
+# preds2 <- predict(mod2, hs)
+# obs2 <- hs$Sat
+# results2 <- PostFitGOFTest(obs2,preds2)
+# results2
+# plot(results2$pear.res~results2$centers)
 ```

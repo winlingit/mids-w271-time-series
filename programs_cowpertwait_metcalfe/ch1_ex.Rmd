@@ -1,0 +1,78 @@
+---
+title: "Ch.1 Examples from Cowpertwait & Metcalfe"
+date: "July 2, 2017"
+author: "Winston Lin"
+output: pdf_document
+---
+
+1.4.3. Australian Bureau of Statistics data
+
+```{r}
+# read data
+data(AirPassengers)
+ap = AirPassengers
+summary(ap)
+
+cbe = read.table('./cbe.dat', header = T)
+head(cbe)
+summary(cbe)
+
+# time series objects
+elec.ts = ts(cbe[, 3], start = 1958, freq = 12)
+beer.ts = ts(cbe[, 2], start = 1958, freq = 12)
+choc.ts = ts(cbe[, 1], start = 1958, freq = 12)
+plot(cbind(elec.ts, beer.ts, choc.ts))
+```
+
+```{r}
+# intersection of 2 time series
+ap.elec = ts.intersect(ap, elec.ts)
+start(ap.elec)
+end(ap.elec)
+ap.elec[1:3,]
+plot(ap.elec)
+
+ap = ap.elec[,1]
+elec = ap.elec[,2]
+cor(ap, elec)
+```
+
+
+```{r}
+# windowing time series
+z = read.table('pounds_nz.dat', header = T)
+z.ts = ts(z, st = 1991, freq = 4)
+plot(z.ts, xlab = 'time / years', ylab = 'Quarterly exchange rate in $NZ / pound')
+
+z.92.96 = window(z.ts, start = c(1992, 1), end = c(1996, 1))
+z.96.98 = window(z.ts, start = c(1996, 1), end = c(1998, 1))
+
+plot(z.92.96)
+plot(z.96.98)
+```
+
+```{r}
+# aggregate into annual time series
+global = scan('global.dat')
+global.ts = ts(global, start = c(1856, 1), end = c(2005, 12), freq = 12)
+global.annual = aggregate(global.ts, FUN = mean)
+plot(global.ts)
+plot(global.annual)
+
+# window with trend line
+global.70.05 = window(global.ts, start = c(1970, 1), end = c(2005, 12))
+time.70.05 = time(global.70.05) 
+plot(global.70.05)
+abline(reg = lm(global.70.05 ~ time.70.05))
+```
+
+```{r}
+# decomposition
+plot(decompose(elec.ts))
+elec.decom = decompose(elec.ts, type = 'mult')
+plot(elec.decom)
+
+trend = elec.decom$trend
+seasonal = elec.decom$seasonal
+ts.plot(cbind(trend, trend * seasonal), lty = 1:2)
+```

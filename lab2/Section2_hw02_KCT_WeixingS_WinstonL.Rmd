@@ -1,7 +1,7 @@
 ---
 title: "Lab 2"
-author: "K.C. Tobin"
-date: "June 29, 2017"
+date: "July 2, 2017"
+author: "K.C. Tobin, Weixing Sun, Winston Lin"
 output: pdf_document
 ---
 
@@ -81,7 +81,7 @@ Anova(mod2)
 
 b. Compute deviance/df and interpret its value.
 
-- Deviance/df, the ratio of residual deviance to residual degrees of freedom, is 3.33.  The ratio is greater  than 1.18, the heuristics indicating that the model is a poor fit (Bilder, p. 293).
+- Deviance/df, the ratio of residual deviance to residual degrees of freedom, is 3.285 (551.83/168).  The ratio is greater  than 1.181, the heuristics indicating that the model is a poor fit (Bilder, p. 293).
     
 ```{r}
 # null model
@@ -102,12 +102,13 @@ round(c(devdf = dev.df[2], concern = t1, poor = t2), 3)
  
 c. Examine residual diagnostics and identify any potential problems with the model.
     
-- Residual plots show that there is no systematic patterns for residual distribution, except for a few outliners. E(u|x) is slightly away from 0, while the homoskedaticity is highly preserved. Again, there are a few outliers that deviate expected residuals from 0.  The presence of large residuals may indicate overdispersion and imply that an important explanatory variable has been omitted by the model or the distribution used to estimate the model is not appropriate.  More influence of outliners will be discussed in 24.
+- Residual plots show that there is no systematic patterns for residual distribution, except for a few outliners. E(u|x) is slightly away from 0, while the homoskedasticity is highly preserved. Again, there are a few outliers that deviate expected residuals from 0.  The presence of large residuals may indicate overdispersion and imply that an important explanatory variable has been omitted by the model or the distribution used to estimate the model is not appropriate.  More influence of outliners will be discussed in 24.
   
 ```{r, warning=FALSE}
 
 # plot(allEffects(mod2))
 residualPlots(mod1)
+# residualPlots(mod2)
 
 # # standardized pearson residuals - appear to be random
 # std.resid = rstandard(mod2, type = c('pearson'))
@@ -190,7 +191,7 @@ glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
 
  # Plots against fitted values 
  if(show[1] == TRUE) {
-  x11(height = 7,width = 15, pointsize = 15)
+  # x11(height = 7,width = 15, pointsize = 15)
   par(mfrow = c(1,4), lty = "dotted")
   plot(x = yhat, y = hii, xlab = "Estimated Mean or Probability", ylab = "Hat (leverage) value",
    ylim = c(0, max(hii,3*P/N)))
@@ -211,7 +212,7 @@ glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
  
  # Plots against hat values
  if(show[2] == TRUE) {
-  x11(height = 6, width = 12, pointsize = 20)
+  # x11(height = 6, width = 12, pointsize = 20)
   par(mfrow = c(1,3))
   plot(x = hii, y = D.X2, xlab = "Hat (leverage) value", ylab = "Approx change in Pearson stat",
    ylim = c(0, max(D.X2, 9)), xlim = c(0, max(hii,3*P/N)))
@@ -258,32 +259,34 @@ glmInflDiag <- function(mod.fit, print.output = TRUE, which.plots = c(1,2)){
  data.frame(hat  =  hii, CD = cookD, delta.Xsq = D.X2, delta.D = D.dev2)
 }
 
-glmInflDiag(mod2, print.output = FALSE, which.plots = 1:2)
+influence1 = glmInflDiag(mod1, print.output = FALSE, which.plots = 1:2)
+# influence2 = glmInflDiag(mod2, print.output = FALSE, which.plots = 1:2)
 ```
 
 25. Remove the influential crab from the analysis and repeat the steps in Question 23. Has this fixed the problems with the model? Are there any other problems with the model, and what could be done to solve these problems?
 
-  - In both (ordinal and categorical) models, the removal of the outlier mildly decreases the significance of Color and mildly increases the significance of Weight. The influence of the outlier is limited.  Excluding observation 165 from the model estimation reduces the residual deviance and deviance/df slightly (from 3.33 to 3.27), but the model is still not well fit to the data based on the heuristic of deviance/df > 1.  There are 4 additional points above the top line in the leverage plot (6, 31, 95, 127) that we could remove before restimating a model for better fit.
+  - In both (ordinal and categorical) models, the removal of the outlier mildly decreases the significance of Color and mildly increases the significance of Weight. The influence of the outlier is limited.
+  
+  - Excluding observation 165 from the model estimation does not substantially change the residual deviance and deviance/df (from 3.285 to 3.275 = 547.09/167).  The goodness-of-fit test gives a higher Pearson statistic than the original model (from 785 to 850) and a similar p-value of 0.  Thus, the model is still not well fit to the data based on the heuristic of deviance/df > 1 and goodness-of-fit test.
 
-
-  - Other possible problems and solutions include:
-
-    - Random sampling: From the Q-Q plot above in Problem 24, we can observe that the residual is not well normally distributed. From other residual plots, we observed a slight heteroscedasticity. We have no information about sampling in this study. But a better randomly selected sample and independently and identically distributed observations will help on a better model fitting.
+  - There are 4 additional points above the top line in the leverage plot (6, 31, 95, 127) that we could remove before restimating a model for better fit.
     
-    - Interactions between parameter. It is possible that weight and color, or spine and color, have interactions. Though it is not studied here, the interaction term may be statistically significant and improve model fitting.
+  - Random sampling: From the Q-Q plot above in Problem 24, we can observe that the residual is not well normally distributed. From other residual plots, we observed a slight heteroscedasticity. We have no information about sampling in this study. But a better randomly selected sample and independently and identically distributed observations will help on a better model fitting.
+    
+  - Interactions between parameter. It is possible that weight and color, or spine and color, have interactions. Though it is not studied here, the interaction term may be statistically significant and improve model fitting.
 
 ```{r}
 hs2 <- hs[-165,]
 
-# compare mod1 and mod1.3(without the outliner)
+# compare mod1 and mod1.3(without the outlier)
 mod1.3 <- glm(Sat~Color+Spine+Width+Weight, family = poisson(link="log"), data=hs2)
-#summary(mod1.3)
+summary(mod1.3)
 #Anova(mod1.3)
 stargazer(mod1,mod1.3,type="text")
 
-# compare mod2 and mod2.3(without the outliner)
+# compare mod2 and mod2.3(without the outlier)
 mod2.3 <- glm(Sat ~ Color.cat + Spine.cat + Width + Weight, family = poisson(link="log"), data=hs2)
-#summary(mod2.3)
+summary(mod2.3)
 #Anova(mod2.3)
 stargazer(mod2,mod2.3,type="text")
 
@@ -292,18 +295,9 @@ stargazer(mod2,mod2.3,type="text")
 # Anova(mod2)
 # stargazer(mod1,mod2,type="text")
 # 
-# preds2 <- predict(mod2, hs)
-# obs2 <- hs$Sat
-# results2 <- PostFitGOFTest(obs2,preds2)
-# results2
-# plot(results2$pear.res~results2$centers)
-
-residualPlots(mod1.3)
-
 preds2 <- predict(mod1.3, hs)
 obs2 <- hs$Sat
 results2 <- PostFitGOFTest(obs2,preds2)
-# results
-
+# results2
 plot(results2$pear.res~results2$centers)
 ```

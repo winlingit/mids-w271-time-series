@@ -1,0 +1,18 @@
+---
+title: "Ch. 6 Examples"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# simulate AR(1) process
+read.table('pounds_nz.dat', header = T)
+x.ts = ts(x, st = 1991, freq = 4)
+x.ma = arima(x.ts, order = c(0,0,1))
+x.ma
+acf(x.ma$res[-1])
+```
+

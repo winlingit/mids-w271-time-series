@@ -8,6 +8,24 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+build = read.table('ApprovActiv.dat', header = T); attach(build);
+app.ts = ts(Approvals, start = c(1996,1), freq = 4)
+act.ts = ts(Activity, start = c(1996,1), freq = 4)
+ts.plot(app.ts, act.ts, lty = c(1,3))
+acf(ts.union(app.ts, act.ts))
+```
+
+```{r}
+# autocorrelation and cross-correlation of random components
+app.ran = decompose(app.ts)$random
+app.ran.ts = window(app.ran, start = c(1996,3))
+act.ran = decompose(act.ts)$random
+act.ran.ts = window(act.ran, start = c(1996,3))
+acf(ts.union(app.ran.ts, act.ran.ts))
+ccf(app.ran.ts, act.ran.ts)
+```
+
+```{r}
 wine = read.table('wine.dat', header = T)
 attach(wine)
 

@@ -1,0 +1,38 @@
+---
+title: "Week 8 Live Session Breakout"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+x = read.csv('week8SeriesTiwari.csv')
+head(x); tail(x)
+plot(x[,1], type = 'l')
+hist(x[,1])
+```
+
+- Series is stationary in the mean
+- Persistent - deviations from mean tend to cluster (sticky)
+
+```{r}
+train = x[1:990, 1]
+test = x[991:1000, 1]
+plot(train, type = 'l')
+hist(train)
+acf(train)
+pacf(train)
+```
+
+```{r}
+order.aic.list = list()
+for (p in 1:15) {
+        m0 = arima(train, order = c(p,0,0), method = 'ML')
+        order.aic.list[[p]] = data.frame(order = p, aic = m0$aic)
+}
+
+order.aic.df = rbind(order.aic.list)
+plot(order.aic.df$order, order.aic.df$aic, type = 'l')
+```

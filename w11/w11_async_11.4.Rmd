@@ -1,0 +1,21 @@
+---
+title: "w11_async"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(car)
+library(wooldridge)
+```
+
+The residual-fitted plot shows a slight increase in variance in the residuals, but the Q-Q plot confirms normality of the response with a few exceptions.  This is confirmed by the residuals-leverage plot which shows a few high leverage points.
+
+```{r}
+# summary(crime2)
+
+crimes.82 = crime2[crime2$year==82,]
+ols.fit1 = lm(crmrte ~ unem, data = crimes.82)
+summary(ols.fit1)
+plot(ols.fit1)
+```

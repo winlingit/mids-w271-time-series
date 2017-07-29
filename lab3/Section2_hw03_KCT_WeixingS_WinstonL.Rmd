@@ -15,7 +15,7 @@ library(effects)
 ```
   
 ## Question 1: EDA
-During your EDA, you notice that your data exhibits both seasonality (different months ahve different heights) AND that there is a clear linear trend.  How many order of non-seasonal and seasonal differencing would it take to make this time-series stationary in the mean?  Why?
+During your EDA, you notice that your data exhibits both seasonality (different months have different heights) AND that there is a clear linear trend.  How many order of non-seasonal and seasonal differencing would it take to make this time-series stationary in the mean?  Why?
   
 ```{r, warning=FALSE}
 

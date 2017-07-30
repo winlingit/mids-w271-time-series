@@ -31,17 +31,19 @@ The variance of the series appears to decrease over time, so we take the log of 
 
 # EDA
 unemp = read.csv("UNRATENSA.csv")
-# head(unemp); tail(unemp)
+head(unemp); tail(unemp)
 x = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
 plot.ts(x, main = 'Unemployment rate by month, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
+hist(x)
+acf2(x, 370)
 
 lx = log(x)  # log transform to stabilize variance
 acf2(lx, 130)  # ACF gradual decay
 
-dlx = diff(lx)  # diff by 1 lag to remove trend
+dlx = diff(lx)  # diff by 1 lag to remove monthly trend
 acf2(dlx, 130)
 
-ddlx = diff(dlx, lag=12)  # diff by 12 lags to remove season trend
+ddlx = diff(dlx, lag=12)  # diff by 12 lags to remove seasonal trend
 acf2(ddlx, 250)
 
 plot.ts(cbind(x,lx,dlx,ddlx), main='Unemployment rate by month, January 1948 - June 2017')
@@ -54,22 +56,58 @@ It is Dec. 31, 2016, and you work for a non-partisan think tank focusing on the 
 
 a. Build a SARIMA model using the unemployment data and produce a 1-year forecast and then a 4-year forecast.  Because it is Dec. 31, 2016, leave out 2016 as your test data.
 
-  - How well does your model predict the unemployment rate up until June 2017?
-  
-  The plot of the actual and predicted unemployment rate shows that the model is highly accurate.  [what is formal reasoning?]
-  
-  - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
-  
-  The model predicts an unemployment rate of 2.83% at the end of 2020.  This is not a credible estimate, however, since the confidence interval for this prediction contains 0.
-
 ```{r}
 # fit model on training set and run diagnostics
+
+# 1. SARIMA(0,1,0)x(0,1,1)
 train = window(x, end=c(2015,12), frequency=12)
 test = window(x, start=c(2016,1), frequency=12)
-fit1 = sarima(train, 0,1,0, 0,1,1,12)
-fit1[c('AIC','AICc','BIC')]
-# acf2(resid(fit1))
 
+# find seasonal orders P, Q
+for (P in 0:2) {
+        for(Q in 0:2) {
+                fit = Arima(train, order=c(0,1,0), seasonal=list(order=c(P,1,Q)), method='ML')
+                print(c(P,Q,fit$aic))
+        }
+}
+
+# find orders p, q
+for (p in 0:2) {
+        for(q in 0:2) {
+                fit = Arima(train, order=c(p,1,q), seasonal=list(order=c(0,1,1)), method='ML')
+                print(c(p,q,fit$aic))
+        }
+}
+
+# # with astsa
+# fit1 = sarima(train, 0,1,0, 0,1,1,12)
+# acf2(resid(fit1$fit), 250)
+# 
+# # 2. SARIMA(1,1,0)x(0,1,1)
+# fit2 = sarima(train, 1,1,0, 0,1,1,12)
+# acf2(resid(fit2$fit), 250)
+# 
+# # 3. SARIMA(2,1,0)x(0,1,1)
+# fit3 = sarima(train, 2,1,0, 0,1,1,12)
+# acf2(resid(fit3$fit), 250)
+# 
+# # 4. SARIMA(0,2,0)x(0,1,1)
+# fit4 = sarima(train, 0,2,0, 0,1,1,12)
+# acf2(resid(fit4$fit), 250)
+# 
+# # SARIMA(0,2,1)x(0,1,1)
+# fit5 = sarima(train, 0,2,1, 0,1,1,12)
+# acf2(resid(fit5$fit), 250)
+# 
+# fit1[c('AIC','AICc','BIC')]
+# fit2[c('AIC','AICc','BIC')]
+# fit3[c('AIC','AICc','BIC')]  # best fit, lowest BIC
+# fit4[c('AIC','AICc','BIC')]
+# fit5[c('AIC','AICc','BIC')]
+```
+  - How well does your model predict the unemployment rate up until June 2017?
+
+```{r}
 # 2-year forecast for 2016-2017
 for2y = sarima.for(train,24, 0,1,0, 0,1,1,12)
 comp2y = ts.intersect(test, for24$pred)
@@ -79,6 +117,15 @@ ts.plot(comp2y, lty=c(1,2), main='Unemployment rate by month, 2016-2017: Actuals
 for5y = sarima.for(train,60, 0,1,0, 0,1,1,12)
 for5y
 ```
+  
+  The plot of the actual and predicted unemployment rate shows that the model is highly accurate.  [what is formal reasoning?]
+  
+  - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
+  
+  The model predicts an unemployment rate of 2.83% at the end of 2020.  This is not a credible estimate, however, since the confidence interval for this prediction contains 0.
+
+
+
 
 b. Build a linear time regression and incorporate seasonal effects.  Be sure to evaluate the residuals and assess this model on the bases of the assumptions of the classical linear model, and the produce a 1-year and 4-year forecast.
 

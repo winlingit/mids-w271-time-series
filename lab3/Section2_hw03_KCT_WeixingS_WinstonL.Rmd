@@ -12,18 +12,39 @@ library(car)
 library(stargazer)
 library(Hmisc)
 library(effects)
+library(astsa)
+library(forecast)
 ```
   
 ## Question 1: EDA
 During your EDA, you notice that your data exhibits both seasonality (different months have different heights) AND that there is a clear linear trend.  How many order of non-seasonal and seasonal differencing would it take to make this time-series stationary in the mean?  Why?
-  
+
+Behavior of ACF and PACF for ARMA models (from SS2016, p.71):
+  - AR(p):  ACF tails off, PACF cuts off after lag p
+  - MA(q):  ACF cuts off after lag q, PACF tails off
+  - ARMA(p,q):  both ACF and PACF tail off
+
+The variance of the series appears to decrease over time, so we take the log of the series to stabilize the variance.  The ACF decays slowly, so we take the difference with lag 1 (1 month) to remove the trend.  The resulting ACF shows seasonal autocorrelation every 12 months that decays gradually.  Now, we take the difference with lag 12 (1 year) to remove the seasonal trend.  The ACF now cuts off after lag 12, and the PACF decays slowly. This implies a seasonal MA(1) model of the seasonal differenced, differenced-log series and SARIMA(0,1,0)(0,1,1) final model overall.  So to remove trend and seasonality, we would perform non-seasonal differencing of order 1 and seasonal differencing of order 1, with a 12-month seasonal period.  
+
+
 ```{r, warning=FALSE}
 
 # EDA
-unemp <- read.csv("UNRATENSA.csv")
-summary(unemp)
-unemp.ts = ts(unemp, start = c(1948, 1), frequency = 12)
-plot.ts(unemp.ts[,2], main = 'Unemployment rate by month, January 1948 - June 2017', ylab = 'Percent of population')
+unemp = read.csv("UNRATENSA.csv")
+# head(unemp); tail(unemp)
+x = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
+plot.ts(x, main = 'Unemployment rate by month, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
+
+lx = log(x)  # log transform to stabilize variance
+acf2(lx, 130)  # ACF gradual decay
+
+dlx = diff(lx)  # diff by 1 lag to remove trend
+acf2(dlx, 130)
+
+ddlx = diff(dlx, lag=12)  # diff by 12 lags to remove season trend
+acf2(ddlx, 250)
+
+plot.ts(cbind(x,lx,dlx,ddlx), main='Unemployment rate by month, January 1948 - June 2017')
 ```
 
 
@@ -34,8 +55,30 @@ It is Dec. 31, 2016, and you work for a non-partisan think tank focusing on the 
 a. Build a SARIMA model using the unemployment data and produce a 1-year forecast and then a 4-year forecast.  Because it is Dec. 31, 2016, leave out 2016 as your test data.
 
   - How well does your model predict the unemployment rate up until June 2017?
-
+  
+  The plot of the actual and predicted unemployment rate shows that the model is highly accurate.  [what is formal reasoning?]
+  
   - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
+  
+  The model predicts an unemployment rate of 2.83% at the end of 2020.  This is not a credible estimate, however, since the confidence interval for this prediction contains 0.
+
+```{r}
+# fit model on training set and run diagnostics
+train = window(x, end=c(2015,12), frequency=12)
+test = window(x, start=c(2016,1), frequency=12)
+fit1 = sarima(train, 0,1,0, 0,1,1,12)
+fit1[c('AIC','AICc','BIC')]
+# acf2(resid(fit1))
+
+# 2-year forecast for 2016-2017
+for2y = sarima.for(train,24, 0,1,0, 0,1,1,12)
+comp2y = ts.intersect(test, for24$pred)
+ts.plot(comp2y, lty=c(1,2), main='Unemployment rate by month, 2016-2017: Actuals and Forecast', ylab='Unemployment rate (%)')
+
+# 4-year forecast
+for5y = sarima.for(train,60, 0,1,0, 0,1,1,12)
+for5y
+```
 
 b. Build a linear time regression and incorporate seasonal effects.  Be sure to evaluate the residuals and assess this model on the bases of the assumptions of the classical linear model, and the produce a 1-year and 4-year forecast.
 

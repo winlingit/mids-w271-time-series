@@ -1,0 +1,52 @@
+---
+title: "Ch. 3 Examples"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+build = read.table('ApprovActiv.dat', header = T); attach(build);
+app.ts = ts(Approvals, start = c(1996,1), freq = 4)
+act.ts = ts(Activity, start = c(1996,1), freq = 4)
+ts.plot(app.ts, act.ts, lty = c(1,3))
+acf(ts.union(app.ts, act.ts))
+```
+
+```{r}
+# autocorrelation and cross-correlation of random components
+app.ran = decompose(app.ts)$random
+app.ran.ts = window(app.ran, start = c(1996,3))
+act.ran = decompose(act.ts)$random
+act.ran.ts = window(act.ran, start = c(1996,3))
+acf(ts.union(app.ran.ts, act.ran.ts))
+ccf(app.ran.ts, act.ran.ts)
+```
+
+```{r}
+wine = read.table('wine.dat', header = T)
+attach(wine)
+
+sweetw.ts = ts(sweetw, start = c(1980,1), freq = 12)
+plot(sweetw.ts, xlab = 'Time (months)', ylab = 'sales(1000 litres)')
+
+# Holt-Winters exponential smoother
+sweetw.hw = HoltWinters(sweetw.ts, seasonal = 'mult')
+sweetw.hw; sweetw.hw$coef; sweetw.hw$SSE
+sqrt(sweetw.hw$SSE / length(sweetw))
+sd(sweetw)
+
+plot(sweetw.hw$fitted)
+plot(sweetw.hw)
+```
+
+```{r}
+ap.hw = HoltWinters(ap, seasonal = 'mult')
+plot(ap.hw)
+
+# prediction with H-W smoother
+ap.predict = predict(ap.hw, n.ahead = 4*12)
+ts.plot(ap, ap.predict, lty = 1:2)
+```

@@ -1,0 +1,23 @@
+---
+title: "Ch. 2 Examples"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+herald = read.table('Herald.dat', header = T)
+attach(herald)
+
+# covariance
+x = CO; y = Benzoa; n = length(x)
+sum((x - mean(x)) * (y - mean(y))) / (n - 1)
+mean((x - mean(x)) * (y - mean(y)))
+cov(x, y)
+
+# correlation
+cov(x, y) / (sd(x) * sd(y))
+cor(x, y)
+```

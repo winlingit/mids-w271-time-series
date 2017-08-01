@@ -1,0 +1,134 @@
+---
+title: "Ch. 2 Examples"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(astsa)
+```
+
+```{r}
+ # separate time series plots
+par(mfrow = c(3,1))
+plot(cmort, main = 'Cardiovascular Mortality')
+plot(tempr, main = 'Temperature')
+plot(part, main = 'Particulates')
+
+# time series plots
+dev.new()
+ts.plot(cmort, tempr, part, col = 1:3)
+
+# scatterplot matrix
+dev.new()
+pairs(cbind(mortality = cmort, temperature = tempr, particulates = part))
+temp = tempr - mean(tempr)
+temp2 = temp^2
+trend = time(cmort)
+
+# fit OLM model
+fit = lm(cmort ~ trend + temp + temp2 + part, na.action = NULL)
+summary(fit)
+
+# ANOVA tests
+summary(aov(fit))
+summary(aov(lm(cmort ~ cbind(trend, temp, temp2, part))))
+num = length(cmort)
+
+# goodness of fit
+AIC(fit)/num - log(2*pi)
+BIC(fit)/num) - log(2*pi)
+(AICc = log(sum(resid(fit)^2)/num) + (num + 5)/(num - 5 -))
+```
+
+```{r}
+fit = lm(chicken ~ time(chicken), na.action = NULL)
+# remove trend
+par(mfrow = c(2,1))
+plot(resid(fit), type = 'l', main = 'detrended')
+plot(diff(chicken), type = 'l', main = 'first difference')
+
+# ACFs
+par(mfrow = c(3,1))
+acf(chicken, 48, main = 'chicken')
+acf(resid(fit), 48, main = 'detrended')
+acf(diff(chicken), 48, main = 'first difference')
+```
+
+```{r}
+par(mfrow = c(2,1))
+plot(diff(globtemp), type = 'l')
+mean(diff(globtemp))
+acf(diff(gtemp), 48)
+```
+
+```{r}
+# log transformation of series
+par(mfrow = c(2,1))
+plot(varve, main = 'varve', ylab = '')
+plot(log(varve), main = 'log(varve)', ylab = '')
+```
+
+```{r}
+# scatterplot matrix of lags
+lag1.plot(soi, 12)
+lag2.plot(soi, rec, 8)
+```
+
+```{r}
+dummy = ifelse(soi < 0, 0, 1)
+fish = ts.intersect(rec, soiL6 = lag(soi, -6), dL6 = lag(dummy, -6), dframe = T)
+fit = lm(rec ~ soiL6*dL6, data = fish, na.action = NULL)
+summary(fit)
+
+attach(fish)
+
+#scatterplot w/ lowess fit
+plot(soiL6, rec)
+lines(lowess(soiL6, rec), col = 4, lwd = 2)
+points(soiL6, fitted(fit), pch = '+', col = 2)
+
+# residuals and ACF
+plot(resid(fit))
+acf(resid(fit))
+```
+```{r}
+# regression to fit wave signal in noise
+set.seed(90210)
+x = 2*cos(2*pi*1:500/50 + .6*pi) + rnorm(500,0,5)
+z1 = cos(2*pi*1:500/50)
+z2 = sin(2*pi*1:500/50)
+fit = lm (x ~ 0 + z1 + z2)
+summary(fit)
+
+par(mfrow = c(2,1))
+plot.ts(x)
+plot.ts(x, col = 8, ylab = expression(hat(x)))
+lines(fitted(fit), col = 2)
+```
+
+```{r}
+# moving average smoother
+wgts = c(.5, rep(1,11), .5)/12
+soif = filter(soi, sides = 2, filter = wgts)
+plot(soi)
+lines(soif, lwd = 2, col = 4)
+```
+
+```{r}
+# kernel smoother
+plot(soi)
+lines(ksmooth(time(soi), soi, 'normal', bandwidth = 1), lwd = 2, col = 4)
+```
+
+```{r}
+# lowess smoother
+plot(soi)
+lines(lowess(soi, f = .05), lwd = 2, col = 4)
+lines(lowess(soi), lty = 2, lwd = 2, col = 2)
+```
+
+```{r}
+plot(tempr, cmort, xlab = 'Temperature', ylab = 'Mortality')
+lines(lowess(tempr, cmort))
+```

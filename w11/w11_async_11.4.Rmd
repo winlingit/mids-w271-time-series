@@ -1,0 +1,34 @@
+---
+title: "w11_async"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(car)
+library(wooldridge)
+```
+
+The residual-fitted plot shows a slight increase in variance in the residuals, but the Q-Q plot confirms normality of the response with a few exceptions.  This is confirmed by the residuals-leverage plot which shows a few high leverage points.
+
+```{r}
+# summary(crime2)
+
+crimes.82 = crime2[crime2$year==82,]
+ols.fit1 = lm(crmrte ~ unem, data = crimes.82)
+summary(ols.fit1)
+plot(ols.fit1)
+```
+
+The residual-fitted plot shows that the residuals are heteroskedastic, and the Q-Q plot shows that the response is not a normal random variable.  The residuals-leverage plot which shows a few residuals with high leverage.
+
+The negative coefficient for unemployment does not make sense as we would expect unemployment and crime rates to be positively correlated.
+
+```{r}
+# summary(crime2)
+
+crimes.87 = crime2[crime2$year==87,]
+ols.fit2 = lm(crmrte ~ unem, data = crimes.87)
+summary(ols.fit2)
+plot(ols.fit2)
+```

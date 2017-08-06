@@ -1,0 +1,240 @@
+---
+title: 'Statistical Methods for Discrete Response, Time Series, and Panel Data (W271):
+  Lab 3'
+author: "K.C. Tobin, Weixing Sun, Winston Lin"
+date: "August 6, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_knit$set(root.dir = "C:/Users/kctob/OneDrive/Documents/Berkeley/271/mids-w271-time-series/lab2")
+library(car)
+library(stargazer)
+library(Hmisc)
+library(effects)
+library(astsa)
+library(forecast)
+library(vars)
+library(tseries)
+```
+  
+## Question 1: EDA
+
+During your EDA, you notice that your data exhibits both seasonality (different months have different heights) AND that there is a clear linear trend.  How many order of non-seasonal and seasonal differencing would it take to make this time-series stationary in the mean?  Why?
+
+Behavior of ACF and PACF for ARMA models (from SS2016, p.71):
+  - AR(p):  ACF tails off, PACF cuts off after lag p
+  - MA(q):  ACF cuts off after lag q, PACF tails off
+  - ARMA(p,q):  both ACF and PACF tail off
+
+The variance of the series appears to decrease over time, so we take the log of the series to stabilize the variance.  The ACF decays slowly, so we take the difference with lag 1 (1 month) to remove the trend.  The resulting ACF shows seasonal autocorrelation every 12 months that decays gradually.  Now, we take the difference with lag 12 (1 year) to remove the seasonal trend.  The ACF now cuts off after lag 12, and the PACF decays slowly. This implies a seasonal MA(1) model of the seasonal differenced, differenced-log series and SARIMA(0,1,0)(0,1,1) final model overall.  So to remove trend and seasonality, we would perform non-seasonal differencing of order 1 and seasonal differencing of order 1, with a 12-month seasonal period.  
+
+
+```{r, warning=FALSE}
+
+# EDA of UNRATENSA
+unemp = read.csv("UNRATENSA.csv")
+cbind(head(unemp), tail(unemp))
+x = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
+plot.ts(x, main = 'Unemployment rate by month, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
+acf2(x, 370)
+
+lx = log(x)  # log transform to stabilize variance
+acf2(lx, 370)  # ACF gradual decay
+
+dlx = diff(lx)  # diff by 1 lag to remove monthly trend
+acf2(dlx, 250)
+
+ddlx = diff(dlx, lag=12)  # diff by 12 lags to remove seasonal trend
+acf2(ddlx, 250)
+
+plot.ts(cbind(x,lx,dlx,ddlx), main='Unemployment rate by month, January 1948 - June 2017')
+```
+
+```{r}
+# EDA of TOTALNSA
+carsale = read.csv("TOTALNSA.csv")
+cbind(head(carsale), tail(carsale))
+y = ts(carsale$TOTALNSA, start = c(1976, 1), frequency=12)
+
+# the plot shows seasonality of 12 months.
+plot.ts(y, main = 'US car sales by month, January 1976 - June 2017')
+acf2(y, 370)
+
+dy = diff(y)  # diff by 1 lag to remove monthly trend
+acf2(dy, 130)
+
+ddy = diff(dy, lag=12)  # diff by 12 lags to remove seasonal trend
+acf2(ddy, 250)
+
+plot.ts(cbind(y,dy,ddy), main='US car sales by month, January 1976 - June 2017')
+```
+
+
+
+## Question 2: SARIMA
+It is Dec. 31, 2016, and you work for a non-partisan think tank focusing on the state of the U.S. economy.  You are interested in forecasting the unemployment rate through 2017 (and then 2020) to use it as a benchmark against the incoming administration's economic performance.  Use the dataset UNRATENSA.csv and answer the following:
+
+a. Build a SARIMA model using the unemployment data and produce a 1-year forecast and then a 4-year forecast.  Because it is Dec. 31, 2016, leave out 2016 as your test data.
+
+```{r}
+# a function to print residual charts of a SARIMA model
+print_resid_chart <- function(p, d, q, P, D, Q, train) {
+par(mfrow = c(2,2))
+m <- Arima(train, order = c(p, d, q), seasonal = list(order = c(P,
+D, Q)), method = "ML")
+hist(m$residuals)
+acf(m$residuals, 370, ylab = 'ACF residuals')
+pacf(m$residuals, 370, ylab = 'PACF residuals')
+plot(train,m$residuals)
+qqnorm(m$residuals)
+}
+
+# fit model on training set and run diagnostics
+train = window(x, end=c(2015,12), frequency=12)
+test = window(x, start=c(2016,1), frequency=12)
+
+# find seasonal orders P, Q, P = 0 & Q = 1 when AIC is smallest
+for (P in 0:2) {
+        for(Q in 0:2) {
+                fit = Arima(train, order=c(0,1,0), seasonal=list(order=c(P,1,Q)), method='ML')
+                print(c(P,Q,fit$aic))
+        }
+}
+
+# find orders p, q, p = 2 & q = 1 when AIC is smalleset
+for (p in 0:2) {
+        for(q in 0:2) {
+                fit = Arima(train, order=c(p,1,q), seasonal=list(order=c(0,1,1)), method='ML')
+                print(c(p,q,fit$aic))
+        }
+}
+
+print_resid_chart(2, 1, 1, 0, 1, 1, train)
+
+```
+  - How well does your model predict the unemployment rate up until June 2017?
+
+```{r}
+# 2-year forecast for 2016-2017, m1 is the optimal model based on AIC criterion, m3 is the worst forecast
+m1 <- Arima(train, order = c(2, 1, 1), seasonal = list(order = c(0, 1, 1)))
+m2 <- Arima(train, order = c(2, 1, 2), seasonal = list(order = c(0, 1, 1)))
+m3 <- Arima(train, order = c(0, 1, 0), seasonal = list(order = c(0, 1, 1)))
+
+forecast1 <- forecast(m1, h = length(test))
+forecast2 <- forecast(m2, h = length(test))
+forecast3 <- forecast(m3, h = length(test))
+
+# plot test data and forecasts
+plot(test)
+lines(forecast1$mean, col = "red")
+lines(forecast2$mean, col = "blue")
+lines(forecast3$mean, col = "orange")
+
+# prediction with CI
+for2y = sarima.for(train, 24, 2,1,1, 0,1,1, 12)
+```
+  The plot of the actual and predicted unemployment rate shows that the model is highly accurate.  [what is formal reasoning?]
+  
+  - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
+
+```{r}
+# 4-year forecast, 60 months from 2016-2020
+forecast1 <- forecast(m1, h = 60)
+forecast2 <- forecast(m2, h = 60)
+forecast3 <- forecast(m3, h = 60)
+
+# plot test data and forecasts
+plot(forecast1$mean, col = "red")
+lines(forecast2$mean, col = "blue")
+lines(forecast3$mean, col = "orange")
+lines(test)
+
+# prediction with CI
+for5y = sarima.for(train, 60, 0,1,2, 0,1,1, 12)
+```
+
+  The model predicts an unemployment rate of 2.83% at the end of 2020.  This is not a credible estimate, however, since the confidence interval for this prediction contains 0.
+
+
+b. Build a linear time regression and incorporate seasonal effects.  Be sure to evaluate the residuals and assess this model on the bases of the assumptions of the classical linear model, and the produce a 1-year and 4-year forecast.
+
+```{r}
+lm()
+```
+
+  - How well does your model predict the unemployment rate up until June 2017?
+  
+  - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
+  
+  - Compare this forecast to the one produced by the SARIMA model.  What do you notice?
+
+
+## Question 3: VAR.
+You also have data on automotive car sales.
+
+  - Use a VAR model to produce a 1-year forecast on both the unemployment rate and automotive sales for 2017 in the U.S.
+  - Compare the 1-year forecast for unemployment produced by the VAR and SARIMA models, examining both the accuracy AND variance of the forecast.  Do you think the addition of the automotive sales data helps?  Why or why not?
+
+```{r}
+# x is unemployment, y is carsale, setting up training set and testing set
+x.train = window(x, start=c(1976,1), end=c(2015,12), frequency=12)
+x.test = window(x, start=c(2016,1), frequency=12)
+y.train = window(y, end=c(2015,12), frequency=12)
+y.test = window(y, start=c(2016,1), frequency=12)
+
+un_car = cbind(x.train, y.train)
+plot(un_car)
+
+# use ddlx and ddy to examine if the differenced data is stationary
+ddlx.train = window(ddlx, start=c(1977,2), end=c(2015,12), frequency=12)
+ddlx.test = window(ddlx, start=c(2016,1), frequency=12)
+ddy.train = window(ddy, end=c(2015,12), frequency=12)
+ddy.test = window(ddy, start=c(2016,1), frequency=12)
+
+# differenced and seasonally differenced data is stationary
+adf.test(ddlx.train)
+pp.test(ddlx.train)
+adf.test(ddy.train)
+pp.test(ddy.train)
+
+# ccf for original data and differenced data
+ccf(x.train, y.train)
+ccf(ddlx.train, ddy.train)
+
+# examine optimal VAR order by AIC, p = 30 shows smallest AIC
+VARselect(un_car, lag.max = 30)
+
+# season is assigned. QUESTION: should we also assign const or trend?
+var1 <- VAR(un_car, p = 1, season = 12)
+var30 <- VAR(un_car, p = 30, season = 12)
+
+acf2(residuals(var1)[,1], 200)
+acf2(residuals(var1)[,2], 200)
+ccf(residuals(var1)[,1], residuals(var1)[,2])
+
+# var30, apparently, var30 beats var1
+acf2(residuals(var30)[,1], 200)
+acf2(residuals(var30)[,2], 200)
+ccf(residuals(var30)[,1], residuals(var30)[,2])
+```
+
+```{r}
+### Forecasts
+f1 <- predict(var1, n.ahead = length(x.test))
+f30 <- predict(var30, n.ahead = length(y.test))
+
+# plot x.test vs forecasts, var30 shows best fitting, corresponding to residuals analysis
+plot(as.vector(x.test), type = 'l')
+lines(f1$fcst$x.train[,1], col = 'red')
+lines(f30$fcst$x.train[,1], col = 'blue')
+
+# compare SARIMA and VAR
+# VAR is not as good fitting as SARIMA, because car sales has little causal correlation with unemployment. To predict future unployment rate correlated the car sales data will generate uncertainty.
+plot(as.vector(x.test), type = 'l')
+lines(f30$fcst$x.train[,1], col = 'blue')
+lines(as.vector(forecast2$mean), col = 'red')
+```

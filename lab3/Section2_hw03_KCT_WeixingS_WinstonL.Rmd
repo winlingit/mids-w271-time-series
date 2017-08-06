@@ -14,6 +14,8 @@ library(Hmisc)
 library(effects)
 library(astsa)
 library(forecast)
+library(vars)
+library(tseries)
 ```
   
 ## Question 1: EDA
@@ -24,31 +26,66 @@ Behavior of ACF and PACF for ARMA models (from SS2016, p.71):
   - MA(q):  ACF cuts off after lag q, PACF tails off
   - ARMA(p,q):  both ACF and PACF tail off
 
-The variance of the series appears to decrease over time, so we take the log of the series to stabilize the variance.  The ACF decays slowly, so we take the difference with lag 1 (1 month) to remove the trend.  The resulting ACF shows seasonal autocorrelation every 12 months that decays gradually.  Now, we take the difference with lag 12 (1 year) to remove the seasonal trend.  The ACF now cuts off after lag 12, and the PACF decays slowly. This implies a seasonal MA(1) model of the seasonal differenced, differenced-log series and SARIMA(0,1,0)(0,1,1) final model overall.  So to remove trend and seasonality, we would perform non-seasonal differencing of order 1 and seasonal differencing of order 1, with a 12-month seasonal period.  
+The variance of the series appears to decrease over time, so we take the log of the series to stabilize the variance.  The ACF decays slowly, so we take the difference with lag 1 (1 month) to remove the trend.  The resulting ACF shows seasonal autocorrelation every 12 months that decays gradually.  Now, we take the difference with lag 12 (1 year) to remove the seasonal trend.  The ACF now cuts off after lag 12, and the PACF decays slowly. This hints that a seasonal MA(1) model might be a good place to start fitting.  So to remove trend and seasonality, we would perform non-seasonal differencing of order 1 and seasonal differencing of order 1, with a 12-month seasonal period.  
 
 
 ```{r, warning=FALSE}
 
-# EDA
+### 1. EDA for unemployment rate
 unemp = read.csv("UNRATENSA.csv")
 head(unemp); tail(unemp)
-x = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
-plot.ts(x, main = 'Unemployment rate by month, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
-hist(x)
-acf2(x, 370)
+unemp.ts = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
 
-lx = log(x)  # log transform to stabilize variance
-acf2(lx, 130)  # ACF gradual decay
+# plot raw data
+plot.ts(unemp.ts, main = 'Monthly unemployment rate, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
+acf2(unemp.ts, 130)  # ACF: trend, PACF: seasonality
 
-dlx = diff(lx)  # diff by 1 lag to remove monthly trend
-acf2(dlx, 130)
+### 2. transform data
 
-ddlx = diff(dlx, lag=12)  # diff by 12 lags to remove seasonal trend
-acf2(ddlx, 250)
+# log transform to stabilize variance
+lu = log(unemp.ts)
 
-plot.ts(cbind(x,lx,dlx,ddlx), main='Unemployment rate by month, January 1948 - June 2017')
+# diff by 1 lag to remove monthly trend
+dlu = diff(lu)
+acf2(dlu, 130)  # ACF: seasonal spike, PACF: cutoff in seasonal trend after 3 lags
+
+# diff by 12 lags to remove seasonal trend
+dlu.ds = diff(dlu, lag=12)
+acf2(dlu.ds, 130)  # ACF: cutoff after 1 lag, PACF: cutoff in seasonal trend after 3 lags
+
+# start w/ d=1, D=1
+
+# plot transformed data
+plot.ts(cbind(unemp.ts,dlu,dlu.ds), main='Monthly unemployment rate, January 1948 - June 2017')
 ```
 
+```{r, warning=FALSE}
+
+### 1. EDA for automotive sales
+auto = read.csv("TOTALNSA.csv")
+head(auto); tail(auto)
+auto.ts = ts(auto$TOTALNSA, start = c(1976, 1), frequency=12)
+
+# plot raw data
+plot.ts(auto.ts, main = 'Monthly automotive sales, January 1976 - June 2017', ylab = 'Automotive sales (units)')
+acf2(auto.ts, 130)  # ACF: trend, PACF: seasonality
+
+### 2. transform data
+
+# log transform to stabilize variance
+la = log(auto.ts)
+
+# diff by 1 lag to remove monthly trend
+dla = diff(la)
+acf2(dla, 130)
+
+# diff by 12 lags to remove seasonal trend
+dla.ds = diff(dla, lag=12)
+acf2(dla.ds, 250)
+
+# plot transformed data
+plot.ts(cbind(auto.ts,dla,dla.ds), main='Monthly automotive sales, January 1976 - June 2017')
+```
 
 
 ## Question 2: SARIMA
@@ -57,87 +94,220 @@ It is Dec. 31, 2016, and you work for a non-partisan think tank focusing on the 
 a. Build a SARIMA model using the unemployment data and produce a 1-year forecast and then a 4-year forecast.  Because it is Dec. 31, 2016, leave out 2016 as your test data.
 
 ```{r}
-# fit model on training set and run diagnostics
+# split data into training and test sets
+unemp.train = window(unemp.ts, end=c(2015,12), frequency=12)
+unemp.test = window(unemp.ts, start=c(2016,1), frequency=12)
 
-# 1. SARIMA(0,1,0)x(0,1,1)
-train = window(x, end=c(2015,12), frequency=12)
-test = window(x, start=c(2016,1), frequency=12)
+### 3.a. fit seasonal models and select final candidate models with lowest AIC/BIC
 
-# find seasonal orders P, Q
-for (P in 0:2) {
-        for(Q in 0:2) {
-                fit = Arima(train, order=c(0,1,0), seasonal=list(order=c(P,1,Q)), method='ML')
+# try models w/ max 3 seasonal AR, MA lags based on ACF, PACF
+# start w/ D=1 from EDA and transforms
+for (P in 0:3) {
+        for(Q in 0:3) {
+                fit = Arima(unemp.train, order=c(0,1,0), seasonal=list(order=c(P,1,Q)), method='ML')
                 print(c(P,Q,fit$aic))
         }
 }
 
-# find orders p, q
-for (p in 0:2) {
-        for(q in 0:2) {
-                fit = Arima(train, order=c(p,1,q), seasonal=list(order=c(0,1,1)), method='ML')
+# candidate seasonal models (P,D,Q):
+# (0,1,1) AIC = 47.1
+# (2,1,3) AIC = 42.6
+```
+
+```{r}
+### 3.b. fit non-seasonal models (given seasonal models) and select final candidate models with lowest AIC/BIC
+
+# try models w/ max of 3 non-seasonal AR, MA lags based on ACF, PACF
+for (p in 0:3) {
+        for(q in 0:3) {
+                try(fit <- Arima(unemp.train, order=c(p,1,q), seasonal=list(order=c(0,1,1)), method='ML'))
                 print(c(p,q,fit$aic))
         }
 }
 
-# # with astsa
-# fit1 = sarima(train, 0,1,0, 0,1,1,12)
-# acf2(resid(fit1$fit), 250)
-# 
-# # 2. SARIMA(1,1,0)x(0,1,1)
-# fit2 = sarima(train, 1,1,0, 0,1,1,12)
-# acf2(resid(fit2$fit), 250)
-# 
-# # 3. SARIMA(2,1,0)x(0,1,1)
-# fit3 = sarima(train, 2,1,0, 0,1,1,12)
-# acf2(resid(fit3$fit), 250)
-# 
-# # 4. SARIMA(0,2,0)x(0,1,1)
-# fit4 = sarima(train, 0,2,0, 0,1,1,12)
-# acf2(resid(fit4$fit), 250)
-# 
-# # SARIMA(0,2,1)x(0,1,1)
-# fit5 = sarima(train, 0,2,1, 0,1,1,12)
-# acf2(resid(fit5$fit), 250)
-# 
-# fit1[c('AIC','AICc','BIC')]
-# fit2[c('AIC','AICc','BIC')]
-# fit3[c('AIC','AICc','BIC')]  # best fit, lowest BIC
-# fit4[c('AIC','AICc','BIC')]
-# fit5[c('AIC','AICc','BIC')]
+# candidate non-seasonal models (p,d,q):
+# (0,1,2) AIC = 1.6
+# (1,1,1) AIC = -12.7
+# (1,1,2) AIC = -18.0
 ```
-  - How well does your model predict the unemployment rate up until June 2017?
 
 ```{r}
-# 2-year forecast for 2016-2017
-for2y = sarima.for(train,24, 0,1,0, 0,1,1,12)
-comp2y = ts.intersect(test, for24$pred)
-ts.plot(comp2y, lty=c(1,2), main='Unemployment rate by month, 2016-2017: Actuals and Forecast', ylab='Unemployment rate (%)')
+### 4. check candidate models for residuals ~ white noise, out of sample forecast accuracy
+sarima_diag = function(train, p,d,q, P,D,Q) {
+        m = Arima(train, order=c(p,d,q), seasonal=list(order=c(P,D,Q)), method='ML')
+        
+        # residual diagnostics
+        print(hist(m$residuals))
+        print(qqnorm(m$residuals))
+        print(acf2(m$residuals, 130))
+}
 
-# 4-year forecast
-for5y = sarima.for(train,60, 0,1,0, 0,1,1,12)
-for5y
+# diagnostics for SARIMA(0,1,2) (0,1,1) - residuals are uncorrelated, normally distributed
+sarima_diag(unemp.train, 0,1,2, 0,1,1)
+
+# fit model training data, forecast for test period, and check out of sample accuracy
+fit1 = Arima(unemp.train, order=c(0,1,2), seasonal=list(order=c(0,1,1)), method='ML')
+for1 = forecast(fit1, h=length(unemp.test))
+accuracy(for1, unemp.test)  # forecast RMSE = 0.153
+
+
+# diagnostics for SARIMA(1,1,1) (0,1,1) - residuals are uncorrelated, normally distributed
+sarima_diag(unemp.train, 1,1,1, 0,1,1)
+
+# fit model training data, forecast for test period, and check out of sample accuracy
+fit2 = Arima(unemp.train, order=c(1,1,1), seasonal=list(order=c(0,1,1)), method='ML')
+for2 = forecast(fit2, h=length(unemp.test))
+accuracy(for2, unemp.test)  # forecast RMSE = 0.155
+
+
+# diagnostics for SARIMA(1,1,2) (0,1,2) - residuals are uncorrelated, normally distributed
+sarima_diag(unemp.train, 1,1,2, 0,1,2)
+
+# fit model training data, forecast for test period, and check out of sample accuracy
+fit3 = Arima(unemp.train, order=c(1,1,2), seasonal=list(order=c(0,1,1)), method='ML')
+for3 = forecast(fit3, h=length(unemp.test))
+accuracy(for3, unemp.test)  # forecast RMSE = 0.150
 ```
+
+  - How well does your model predict the unemployment rate up until June 2017?
   
-  The plot of the actual and predicted unemployment rate shows that the model is highly accurate.  [what is formal reasoning?]
+  The SARIMA(0,1,2) (0,1,1) model predicts unemployment rate well, with a RMSE of 0.153 on the test data set.
   
+
+```{r}
+# SARIMA forecast through June 2017
+for2y = forecast(fit1, h=length(unemp.test))
+tail(unemp.test); tail(for2y$mean)
+
+# plot actuals and predicted for test period
+comp = ts.intersect(unemp.test, for2y$mean)
+ts.plot(comp, lty=c(1,2), main='Monthly unemployment rate, January 2016 - June 2017: Actuals and Forecast', ylab='Unemployment rate (%)')
+```
+
   - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
   
-  The model predicts an unemployment rate of 2.83% at the end of 2020.  This is not a credible estimate, however, since the confidence interval for this prediction contains 0.
+  The model predicts an unemployment rate of 2.58% at the end of 2020.  This is not a credible estimate because the 95% confidence interval widens and contains 0 in December 2020.
 
-
-
+```{r}
+# SARIMA forecast 5 years
+for5y = forecast(fit1, h=60)
+tail(for5y$mean)
+plot(for5y)
+```
 
 b. Build a linear time regression and incorporate seasonal effects.  Be sure to evaluate the residuals and assess this model on the bases of the assumptions of the classical linear model, and the produce a 1-year and 4-year forecast.
 
+```{r}
+t = time(unemp.ts)
+month = cycle(unemp.ts)
+
+# fit linear model
+fit.lm = lm(unemp.ts ~ 0 + t + factor(month))
+summary(fit.lm)
+
+# check residuals - normally distributed
+plot(fit.lm$residuals)  # residuals are not white noise
+hist(fit.lm$residuals)
+qqnorm(fit.lm$residuals)
+acf2(fit.lm$residuals)
+```
+
+
   - How well does your model predict the unemployment rate up until June 2017?
+  The linear model does not predict the unemployment rate well, with a RMSE of 2.07 on the test data set.
   
+```{r}
+# OLS forecast 1 year
+new.t2y = seq(2016, len=24, by=1/12)
+new.month2y = rep(1:12, 2)
+new.dat = data.frame(t = new.t2y, month = new.month2y)
+for2y.lm = predict(fit.lm, newdata = new.dat)
+accuracy(for2y.lm, unemp.test)
+
+# plot actuals and predicted for test period
+for2y.lm.ts = ts(for2y.lm, start=c(2016,1), frequency=12)
+comp = ts.intersect(unemp.test, for2y.lm.ts)
+ts.plot(comp, lty=c(1,2), main='Monthly unemployment rate, January 2016 - June 2017: Actuals and Forecast', ylab='Unemployment rate (%)')
+```
+
   - What does the unemployment rate look like at the end of 2020?  How credible is this estimate?
   
+  The linear model predicts an unemployment rate of 6.56% at the end of 2020.
+  
+```{r}
+# OLS forecast 4 years
+new.t5y = seq(2016, len=60, by=1/12)
+new.month5y = rep(1:12, 5)
+new.dat = data.frame(t = new.t5y, month = new.month5y)
+for5y.lm = predict(fit.lm, newdata = new.dat, se.fit=T)
+
+for5y.lm.ts = ts(for5y.lm$fit, start=c(2016,1), frequency=12)
+tail(for5y.lm.ts)
+
+# forecast confidence intervals
+lower = ts(for5y.lm$fit - 2*for5y.lm$se.fit, start=c(2016,1), frequency=12)
+upper = ts(for5y.lm$fit + 2*for5y.lm$se.fit, start=c(2016,1), frequency=12)
+
+# plot forecasts and confidence intervals for test period
+comp = ts.intersect(for5y.lm.ts, lower, upper)
+ts.plot(comp, lty=c(1,2,2))
+
+
+```
   - Compare this forecast to the one produced by the SARIMA model.  What do you notice?
+  
+  The forecast from the linear model does not contain any trend and contains more uniform predictions compared to those of the SARIMA model.
 
 ## Question 3: VAR.
 You also have data on automotive car sales.
 
   - Use a VAR model to produce a 1-year forecast on both the unemployment rate and automotive sales for 2017 in the U.S.
 
+```{r}
+# split data into training and test sets
+unemp.train = window(unemp.ts, start=c(1976,1), end=c(2015,12), frequency=12)
+unemp.test = window(unemp.ts, start=c(2016,1), frequency=12)
+
+auto.train = window(auto.ts, end=c(2015,12), frequency=12)
+auto.test = window(auto.ts, start=c(2016,1), frequency=12)
+
+# deseason data and test for unit roots
+unemp.ds = diff(unemp.train, 12)
+adf.test(unemp.ds)  # p < 0.05, series is stationary
+pp.test(unemp.ds)
+
+auto.ds = diff(auto.train, 12)
+adf.test(auto.ds)  # p < 0.05, series is stationary
+pp.test(auto.ds)
+
+
+# plots of original and deseasoned series
+plot(ts.intersect(unemp.train, auto.train))
+ccf(unemp.train, auto.train)
+
+plot(ts.intersect(unemp.ds, auto.ds))
+ccf(unemp.ds, auto.ds)  # ACF shows trend
+```
+
+```{r}
+# select lag order
+unemp.auto = ts.intersect(unemp.train, auto.train)
+VARselect(unemp.auto)  # use 10 lags
+var = VAR(unemp.auto, 10, type='trend', season=12)
+
+# check residuals for unemp.ds
+acf2(residuals(var)[,1], 130)
+acf2(residuals(var)[,2], 130)
+ccf(residuals(var)[,1], residuals(var)[,2])
+
+# VAR forecast for unemployment rate
+for2y.var = predict(var, n.ahead=length(unemp.test))
+
+# check accuracy
+accuracy(for2y.var$fcst$unemp.train[,1], unemp.test)  # RMSE = 0.371
+accuracy(for2y, unemp.test)  # RMSE = 0.153
+```
+
   - Compare the 1-year forecast for unemployment produced by the VAR and SARIMA models, examining both the accuracy AND variance of the forecast.  Do you think the addition of the automotive sales data helps?  Why or why not?
+  
+  Adding automotive sales data does not help the unemployment forecast.

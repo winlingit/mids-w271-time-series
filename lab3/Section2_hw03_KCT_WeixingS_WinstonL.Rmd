@@ -37,7 +37,7 @@ unemp.ts = ts(unemp$UNRATENSA, start = c(1948, 1), frequency=12)
 
 # plot series
 plot.ts(unemp.ts, main = 'Monthly unemployment rate, January 1948 - June 2017', ylab = 'Unemployment rate (%)')
-acf2(unemp.ts, 130)  # ACF: trend, PACF: seasonality
+invisible(acf2(unemp.ts, 130))  # ACF: trend, PACF: seasonality
 
 # test null hypothesis of non-stationarity (unit root)
 adf.test(unemp.ts)  # p = 0.33 > 0.05, series is non-stationary
@@ -51,7 +51,7 @@ lu = log(unemp.ts)
 
 # diff by 1 lag to remove monthly trend
 dlu = diff(lu)
-acf2(dlu, 130)
+invisible(acf2(dlu, 130))
 # ACF: seasonal trend tails off --> seasonal MA
 # PACF: cutoff after 3 seasonal lags --> seasonal AR, max order 3
 
@@ -61,7 +61,7 @@ adf.test(dlu)
 
 # diff by 12 lags to remove seasonality
 ddlu = diff(dlu, lag=12)
-acf2(ddlu, 130)
+invisible(acf2(ddlu, 130))
 # ACF: cutoff after 1 seasonal lag --> seasonal MA, max order 1
 # ACF: cutoff after 3 lags --> MA, max order 3
 # PACF: cutoff after 3 seasonal lags --> seasonal
@@ -85,7 +85,7 @@ auto.ts = ts(auto$TOTALNSA, start = c(1976, 1), frequency=12)
 
 # plot raw data
 plot.ts(auto.ts, main = 'Monthly automotive sales, January 1976 - June 2017', ylab = 'Automotive sales (units)')
-acf2(auto.ts, 130)  # ACF: trend and seasonality
+invisible(acf2(auto.ts, 130))  # ACF: trend and seasonality
 
 # test null hypothesis of non-stationarity (unit root)
 adf.test(auto.ts)  # p = 0.04 < 0.05, series is stationary, no transform needed
@@ -101,14 +101,14 @@ la = log(auto.ts)
 
 # diff by 1 lag to remove monthly trend
 dla = diff(la)
-acf2(dla, 130)
+invisible(acf2(dla, 130))
 
 # test null hypothesis of non-stationarity (unit root)
 adf.test(dla)  # p = 0.01 < 0.05, series is stationary
 
 # diff by 12 lags to remove seasonal trend
 ddla = diff(dla, lag=12)
-acf2(ddla, 250)
+invisible(acf2(ddla, 250))
 
 # test null hypothesis of non-stationarity (unit root)
 adf.test(ddla)  # p = 0.01 < 0.05, series is stationary
@@ -183,10 +183,10 @@ sarima_diag = function(train, p,d,q, P,D,Q) {
         
         # residual diagnostics
         par(mfcol=c(2,2))
-        print(hist(m$residuals))
-        print(qqnorm(m$residuals))
-        print(acf(m$residuals, 130))
-        print(pacf(m$residuals, 130))
+        hist(m$residuals)
+        qqnorm(m$residuals)
+        acf(m$residuals, 130)
+        pacf(m$residuals, 130)
 }
 
 # diagnostics for candidate models
@@ -349,13 +349,13 @@ VARselect(un_car, type='both', lag.max = 30, season=12)
 var1 <- VAR(un_car, p = 1, type='both', season = 12)
 var13 <- VAR(un_car, p = 13, type='both', season = 12)
 
-acf2(residuals(var1)[,1], 200)
-acf2(residuals(var1)[,2], 200)
+invisible(acf2(residuals(var1)[,1], 200))
+invisible(acf2(residuals(var1)[,2], 200))
 ccf(residuals(var1)[,1], residuals(var1)[,2])
 
 # var13, apparently, var13 beats var1
-acf2(residuals(var13)[,1], 200)
-acf2(residuals(var13)[,2], 200)
+invisible(acf2(residuals(var13)[,1], 200))
+invisible(acf2(residuals(var13)[,2], 200))
 ccf(residuals(var13)[,1], residuals(var13)[,2])
 ```
 

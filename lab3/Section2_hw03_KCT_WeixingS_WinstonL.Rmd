@@ -277,7 +277,7 @@ pacf(mod1$residuals, lag.max = 48)
 
 # plot fitted values on training set
 par(mfrow = c(1,1))
-plot(unemp_train$UNRATENSA~unemp_train$time, type = "l") + lines(predict(mod1,newdata = unemp_train), col="blue")
+plot(unemp_train$UNRATENSA~unemp_train$time, type = "l") + lines(predict(mod1,newdata = unemp_train), col="blue", main='Unemployment rate actuals and fitted values for linear model')
 
 # forecast input data
 test <- data.frame(time = 817:876, month = rep(c("January", "February", "March", 
@@ -286,7 +286,7 @@ test <- data.frame(time = 817:876, month = rep(c("January", "February", "March",
                                                  "November", "December"),5))
 
 ##plot predictions
-plot(predict(mod1, newdata = test[1:18,]), type="l", ylab="Unemployment Rate", ylim=c(4,8))
+plot(predict(mod1, newdata = test[1:18,]), type="l", ylab="Unemployment Rate", ylim=c(4,8), main='Unemployment rate forecast for linear model')
 lines(unemp_test$UNRATENSA, col="blue")
 
 ### forecast through June 2017
@@ -309,7 +309,7 @@ pacf(mod2$residuals, lag.max = 48)
 # plot fitted values on training set
 par(mfrow = c(1,1))
 plot(unemp_train[unemp$DATE>"2009-01-01",]$UNRATENSA~unemp_train[unemp$DATE>"2009-01-01",]$time, 
-     type = "l") + lines(predict(mod2,newdata = unemp_train), col="blue")
+     type = "l") + lines(predict(mod2,newdata = unemp_train), col="blue", main='Unemployment rate actuals and fitted values for linear model after 2009')
 
 # forecast input data
 test <- data.frame(time = 817:876, month = rep(c("January", "February", "March", 
@@ -317,8 +317,8 @@ test <- data.frame(time = 817:876, month = rep(c("January", "February", "March",
                                                  "August", "September", "October", 
                                                  "November", "December"),5))
 
-##plot predictions
-plot(predict(mod2, newdata = test[1:18,]), type="l", ylab="Unemployment Rate", ylim=c(4,8))
+## plot predictions
+plot(predict(mod2, newdata = test[1:18,]), type="l", ylab="Unemployment Rate", ylim=c(4,8), main='Unemployment rate forecast for linear model after 2009')
 lines(unemp_test$UNRATENSA, col="blue")
 
 ### forecast through June 2017
@@ -409,11 +409,11 @@ lines(f1$fcst$unemp.train2[,1], col = 'red')
 lines(f13$fcst$unemp.train2[,1], col = 'blue')
 
 # forecast plots
-plot(forecast(var13, 18))
-plot(forecast(var1, 18))
+plot(forecast(var13, 18), main='Unemployment rate and VAR13 forecast')
+plot(forecast(var1, 18), main='Unemployment rate and VAR1 forecast')
 
 # compare SARIMA and VAR
-plot(as.vector(unemp.test), type = 'l')
+plot(as.vector(unemp.test), type = 'l', main='Unemployment rate and SARIMA, VAR13 forecasts')
 lines(f13$fcst$unemp.train2[,1], col = 'blue')
 lines(as.vector(for3$mean), col = 'red')
 

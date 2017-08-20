@@ -1,0 +1,215 @@
+---
+title: "Statistical Methods for Discrete Response, Time Series, and Panel Data (W271): Lab 3"
+date: "August 19, 2017"
+author: "K.C. Tobin, Weixing Sun, Winston Lin"
+output: pdf_document
+---
+
+# Description of the Lab
+
+In this lab, you are asked to answer the question **"Do changes in traffic laws affect traffic fatalities?"**  To do so, you will conduct the tasks specified below using the data set *driving.Rdata*, which includes 25 years of data that cover changes in various state drunk driving, seat belt, and speed limit laws. 
+
+- Specifically, this data set contains data for the 48 continental U.S. states from 1980 through 2004. Various driving laws are indicated in the data set, such as the alcohol level at which drivers are considered legally intoxicated. There are also indicators for “per se” laws—where licenses can be revoked without a trial—and seat belt laws. A few economics and demographic variables are also included. The description of the each of the variables in the dataset is come with the dataste.
+
+**Exercises:**
+
+1. Load the data. Provide a description of the basic structure of the dataset, as we have done in throughout the semester.
+
+- The panel data set consists of 56 variables with 1200 observations.  The unit of analysis are the 48 continental states of the U.S., which are coded as a single numeric variable, sorted alphabetically.  The data are measured from 1980 to 2004, and the years are coded as a numeric single variable as well as a full set of dummy variables.  This is a balanced panel data set since there are observations for all 48 states for every year.
+
+- The dependent variables are fatality counts and ratios of those counts to distance and population.  The independent variables include continuous variables for state demographics, such as population, unemployment rate, and percentage of population ages 18-24, as well as driving activity, such as speed limits and miles driven per capita.  The independent variables also consist of indicator variables that represent driving laws related to requirements for drivers licenses (GDL), seat belt usage, blood alcohol content (BAC) limits, and penalties for drunk driving.  All indicator and dummy variables are binary.
+
+```{r}
+library(car)
+library(stargazer)
+library(ggplot2)
+library(GGally)
+library(plm)
+
+# load data set and view structure
+load('driving.RData')
+attach(data)
+
+# preview and summary stats
+str(data)
+head(data, 40)
+summary(data)
+```
+
+Conduct a very thorough EDA, which should include both graphical and tabular techniques, on the dataset, including both the dependent variable *totfatrte* and the potential explanatory variables. Remember, graphs must be well-labeled. You need to write a detailed narrative of your observations of your EDA. *Reminder: giving an "output dump" (i.e. providing a bunch of graphs and tables without description and hoping your audience will interpret them) will receive zero point in this exercise.*
+
+- Histograms of the continuous variables are right skewed to varying degrees, which suggests we may want to apply a log transform to these variables to satisfy the normality assumption for OLS inference.
+
+- Scatterplots show positive correlations between fatality rates and unemployment rates, percentage of population ages 14-24, and miles driver per capita, as well as negative correlations between fatality rates and state population, minimum drinking age, and miles driven.
+
+- Boxplots of indicator variables for driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
+
+- These correlations may be helpful for checking our intuitions about how the explanatory variables should affect fatality rates.  However, the plots used are based on pooled data and do not account for the fact that the data are from multiple time periods.
+
+```{r}
+### EDA for continuous variables - (need to examine for each year)
+
+# scatterplots
+ggpairs(data[c('totfatrte',  # slightly skewed right --> log transform
+               'statepop',  # heavily skewed right --> log transform; low neg. correlation w/ fat. rate
+               'unem',  # skewed right --> log transform; low pos. correlation w/ fat. rate
+               'perc14_24',  # slightly skewed right --> log transform; pos. correlation w/ fat. rate
+               'minage')],  # heavily skewed left --> log transform; low neg. correlation w/ fat. rate
+        aes(alpha=0.1))
+
+# scatterplots
+ggpairs(data[c('totfatrte',  # slightly skewed right --> log transform
+               'vehicmiles',  # heavily skewed right --> log transform; low neg. correlation w/ fat. rate
+               'vehicmilespc'  # slightly skewed right --> log transform; low pos. correlation w/ fat. rate
+               )],  # --> transform to binary
+        aes(alpha=0.1))
+```
+
+```{r}
+### EDA for indicator variables - (need to examine for each year)
+
+# reshape data for facet grid
+require(reshape2)
+df.melt = melt(data[c('state',
+                      'year',
+                      'totfatrte',
+                      'zerotol',  # =1 --> lower median/max fat. rate
+                      'gdl',  # =1 --> lower median/max fat. rate
+                      'bac10',  # =1 --> no change in median fat. rate
+                      'bac08',  # =1 --> lower median/max fat. rate
+                      'perse',  # =1 --> lower median/max fat. rate
+                      'sbprim',  # =1 --> lower median/max fat. rate
+                      'sbsecon')],  # =1 --> lower median/max fat. rate  
+               id.vars=c('state','year','totfatrte'))
+
+# boxplots
+plot1 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ variable)
+plot1 + labs(title='EDA: Fatality Rate vs. Presence of Driving Laws', x='Driving Law', y='totfatrte')
+
+# reshape data for facet grid
+df.melt = melt(data[c('state',
+                      'year',
+                      'totfatrte',
+                      'sl55',  # =1 --> higher median/max fat. rate; nearly binary --> transform to binary?
+                      'sl65',  # =1 --> lower median/max fat. rate; nearly binary --> transform to binary?
+                      'sl70',  # =1 --> lower median fat. rate; nearly binary --> transform to binary?
+                      'sl75',  # =1 --> higher median fat. rate; nearly binary --> transform to binary?
+                      'slnone')],  # =1 --> higher median fat. rate; nearly binary --> transform to binary?
+               id.vars=c('state','year','totfatrte'))
+
+# boxplots
+plot2 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ variable)
+plot2 + labs(title='EDA: Fatality Rate vs. Presence of Freeway Speed Limits', x='Driving Law', y='totfatrte')
+```
+
+
+
+2.  How is the our dependent variable of interest *totfatrte* defined?  What is the average of this variable in each of the years in the time period covered in this dataset?
+
+- Totfatrte is defined as the total fatalities per 100,000 people.  The average fatality rates for 1980-2004 are below:
+
+```{r}
+round(aggregate(totfatrte ~ year, FUN=mean, data=data), 2)
+```
+
+Estimate a very simple regression model of totfatrte on dummy variables for the years 1981 through 2004.  What does this model explain?  Describe what you find in this model. Did driving become safer over this period? Please provide a detailed explanation.
+
+- This model explains the change in fatality rate in each year relative to 1980.  The coefficients for each year dummy variable can be interpreted as the approximate change in percentage points in the average fatality rate taken across all 48 states.  All coefficients are negative and highly statistically significant (at $\alpha = 0.001$).  The residuals reveal some heteroskedasticity and non-normality, confirming that we need to transform the response to satisfy assumptions for OLS and make our inferences valid.
+
+- From 1980 to 2004, the average fatality rate decreased by about 8.8 points, which matches the decrease when we manually calculate from the averages above ($25.49-16.73$).  Using the average fatality rate as a measure of driving safety, we could claim that the decrease in the fatality rate form 1980 levels implies that driving became safer in 2004.
+
+```{r}
+df.plm = pdata.frame(data, index = c('state','year'), drop.index = F)
+
+# fit model - pooled OLS ~ year dummy vars, 1980 as base year
+form0 = totfatrte ~ d81 + d82 + d83 + d84 + d85 + d86 + d87 + d88 + d89 +
+                   d90 + d91 + d92 + d93 + d94 + d95 + d96 + d97 + d98 + d99 +
+                   d00 + d01 + d02 + d03 + d04
+mod0 = plm(form0, data = df.plm, method='pooling')
+summary(mod0)
+
+# check residuals
+mod_diag = function(mod) {
+        par(mfrow=c(2,2))
+        plot(resid(mod))
+        hist(resid(mod))
+        qqnorm(resid(mod))
+}
+
+mod_diag(mod0)
+```
+
+
+3. Expand your model in *Exercise 2* by adding variables *bac08, bac10, perse, sbprim, sbsecon, sl70plus, gdl, perc14_24, unem, vehicmilespc*, and perhaps *transformations of some or all of these variables*.  Please explain carefully your rationale, which should be based on your EDA, behind any transformation you made. If no transformation is made, explain why transformation is not needed.
+
+- In our EDA, histograms of the continuous variables totfatrte, statepop, unem, perc14_24, and vehicmilespc showed significant skew, so we applied log transformations to enforce normality on these variables and make our inference valid.  This also stabilizes the variance, as seen in the residual plots.
+
+- Indicator variables for bac08, bac10, perse, sbprim, sbsecon, sl70plus, and gdl were not transformed to binary variables.  They represent fractional years to account for laws changing in the middle of the year, but values other than 0 or 1 occur infrequently as shown in the histograms in our EDA.  Thus, the benefit of binarizing these variables would be minimal.
+
+```{r}
+# log transforms - enforce normality
+df.plm$ltotfatrte = log(df.plm$totfatrte)
+df.plm$lunem = log(df.plm$unem)
+df.plm$lperc14_24 = log(df.plm$perc14_24)
+df.plm$lvehicmilespc = log(df.plm$vehicmilespc)
+
+# fit model - pooled OLS ~ transformed dependent/independent vars
+form1 = update(form0, ltotfatrte ~ . + bac08 + bac10 + perse + sbprim + sbsecon + sl70plus + gdl +
+                       lperc14_24 + lunem + lvehicmilespc)
+mod1 = plm(form1, data=df.plm, method='pooling')
+summary(mod1)
+
+# check residuals
+mod_diag(mod1)
+```
+How are the variables *bac8* and *bac10* defined? Interpret the coefficients on *bac8* and *bac10*.
+
+- The variables bac08 and bac10 are defined as fractional years during which the BAC limits were 0.08 and 0.10, respectively.  In some state-years, the BAC limits changed in the middle of the year.  The coefficients for bac08 and bac10 can be interpreted as the percentage change in the fatality rate for each fraction of a year that the BAC laws are in place.  In this case, if BAC limits are 0.08 for an entire year, then the model implies that fatality rates will drop by 1.5%.  The same would apply if the BAC limits were 0.10 for an entire year, since the coefficients are both close to 0.15.  However, the coefficients for are statistically insignificant (at $\alpha = 0.05$, p-value = 0.3630 and 0.1996 for bac08 and bac10), so we're not confident in this conclusion.
+
+Do *per se laws* have a negative effect on the fatality rate? What about having a primary seat belt law? (Note that if a law was enacted sometime within a year the fraction of the year is recorded in place of the zero-one indicator.)
+
+- Per se laws decrease the fatality rate by about 5.9%.  The coefficient for perse is highly statistically significant (at $\alpha = 0.001$, p-value = ).  Primary seat belt laws decrease the fatality rate by about 4.0%.  The coefficient for sbprim is also statistically significant (at $alpha = 0.01$, p-value = 0.007).
+
+4. Reestimate the model from *Exercise 3* using a fixed effects (at the state level) model.  How do the coefficients on *bac08, bac10, perse, and sbprim* compare with the pooled OLS estimates?  Which set of estimates do you think is more reliable?
+
+What assumptions are needed in each of these models?  Are these assumptions reasonable in the current context?
+
+```{r}
+# fit model - fixed effects at state level
+mod2 = plm(form1, data=df.plm, method='within')
+summary(mod2)
+
+# check residuals
+mod_diag(mod2)
+
+# compare pooled and FE models
+stargazer(mod1, mod2, type = 'text')
+
+# # create dummy variables for each state
+# states = unique(data$state)
+# df.states = setNames(lapply(states, function(x) as.numeric(data$state==x)), paste('s', states, sep = ''))
+# df.states = pdata.frame(cbind(data[c('state','year')], df.states))
+# 
+# # add dummay variables to panel df
+# df.plm = pdata.frame(cbind(df.plm, df.states), index=c('state','year'))
+# # head(df.plm); tail(df.plm)
+```
+
+5. Would you perfer to use a random effects model instead of the fixed effects model you build in *Exercise 4*? Why? Why not?
+
+6. Suppose that *vehicmilespc*, the number of miles driven per capita, increases by 1,000. Using the FE estimates, what is the estimated effect on totfatrte? Be sure to interpret the estimate as if explaining to a layperson.
+
+7. If there is serial correlation or heteroskedasticity in the idiosyncratic errors of the model, what would be the consequences on the coefficient estimates and their standard errors?
+
+
+
+
+
+
+
+
+
+
+
+
+

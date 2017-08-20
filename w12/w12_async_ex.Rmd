@@ -1,0 +1,66 @@
+---
+title: "w12_async_ex"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(wooldridge)
+str(jtrain)
+head(jtrain, 12)
+
+# split data set by year
+x = split.data.frame(jtrain, as.factor(jtrain$year))
+str(x)
+
+jtrain.87 = x$`1987`
+jtrain.88 = x$`1988`
+jtrain.89 = x$`1989`
+str(jtrain.87)
+```
+
+```{r}
+jtrain.87.ols = lm(lscrap ~ hrsemp + lsales + lemploy, data = jtrain.87)
+summary(jtrain.87.ols)
+```
+
+1.  Given the summary statistics provided and the estimated model (in the last three slides), is there anything wrong with this estimated regression (in terms of understanding impact of training on scrap rate)?
+
+The regresssion does not take advantage of panel data to infer the relationship between scrap rate and training, relative to firm size.  A cross-sectional relationship is estimated, which may be biased due to omitted variables, including the year.  A fixed effect analysis would provide estimators that remove the effects of time-invariant omitted variables and account for changes in relationship across time.
+
+
+2.  Interpret the coefficient associated wit hthe variable hrsemp.
+
+As total training hours per employee increases, log of scrap rate decreases by 4%  More training leads to less errors.
+
+
+3.  Is the effect large?  Is therea ny other informations (perhaps not included in the regression) that you would need in order to answer this question?
+
+We would need to know the standard deviation of the log scrap rate to see if this effect is large.
+
+4.  How would you estimate a cross-sectional model differently, if at all?
+
+To estimate a cross-sectional model, I'd pool the data and add indicator variable for each year.
+
+
+```{r}
+### 12.6.  Random-Effect Models
+
+library(plm)
+library(stargazer)
+
+str(wagepan)
+wagepan.panel = plm.data(wagepan, c('nr','year'))
+summary(wagepan.panel)
+
+# pooled OLS
+wagepan.ols = plm(lwage ~ educ + black + hisp + exper + exper^2 + married + union, data = wagepan.panel, method='pooling')
+
+# fixed effects
+wagepan.fe = plm(lwage ~ educ + black + hisp + exper + exper^2 + married + union, data = wagepan.panel, method='within')
+
+stargazer(wagepan.ols, wagepan.fe, summary=T, type='text')
+```

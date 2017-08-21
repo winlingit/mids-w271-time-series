@@ -62,7 +62,7 @@ ggpairs(data[c('totfatrte',  # slightly skewed right --> log transform
 
 - Boxplots of indicator variables across driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
 
-- Boxplots of the indicator variables across states show that the median fatality rates differ significantly from each other and may
+- Boxplots of the indicator variables across states show that the median fatality rates differ significantly from each other.  This may indicate the presence of unobserved effects for states.
 
 - These correlations may be helpful for checking our intuitions about how the explanatory variables should affect fatality rates.  However, the plots used are based on pooled data and do not account for the fact that the data are from multiple time periods.
 

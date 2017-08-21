@@ -60,7 +60,9 @@ ggpairs(data[c('totfatrte',  # slightly skewed right --> log transform
         aes(alpha=0.1))
 ```
 
-- Boxplots of indicator variables for driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
+- Boxplots of indicator variables across driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
+
+- Boxplots of the indicator variables across states show that the median fatality rates differ significantly from each other and may
 
 - These correlations may be helpful for checking our intuitions about how the explanatory variables should affect fatality rates.  However, the plots used are based on pooled data and do not account for the fact that the data are from multiple time periods.
 
@@ -100,9 +102,9 @@ df.melt = melt(data[c('state',
 plot2 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ variable)
 plot2 + labs(title='EDA: Fatality Rate vs. Presence of Freeway Speed Limits', x='Driving Law', y='totfatrte')
 
-# boxplots by state
+# boxplots by state - not sure how to tag state IDs with names
 plot3 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ state)
-plot3 + labs(title='EDA: Fatality Rate vs. State', x='Driving Law', y='totfatrte')
+plot3 + labs(title='EDA: Fatality Rate vs. State', x='State', y='totfatrte')
 ```
 
 
@@ -151,6 +153,8 @@ mod_diag(mod0)
 - In our EDA, histograms of the continuous variables totfatrte, statepop, unem, perc14_24, and vehicmilespc showed significant skew, so we applied log transformations to enforce normality on these variables and make our inference valid.  This also stabilizes the variance, as seen in the residual plots.
 
 - Indicator variables for bac08, bac10, perse, sbprim, sbsecon, sl70plus, and gdl were transformed to binary variables to make interpretation easier.  They represent fractional years to account for laws changing in the middle of the year, which is less intuitive than simply indicating whether a state had a law or not in a given year in order to determine if these laws affected fatality rates.  The model with the binarized variables has similar estimates for the coefficients, so we could've used the original variables to fit the model as well if we wanted to look at differences in effect between whole and parts of a year.
+
+- The residuals appear to be normally distributed, but not homoskedastic.  They cluster at regular intervals when plotted, indicating that there could be an AR process in the data.  We would expect this from a pooled OLS model though, which doesn't take time into account.
 
 ```{r}
 # log transforms - enforce normality

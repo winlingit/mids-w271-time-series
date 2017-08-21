@@ -6,14 +6,13 @@ output: pdf_document
 ---
 
 # Description of the Lab
-
 In this lab, you are asked to answer the question **"Do changes in traffic laws affect traffic fatalities?"**  To do so, you will conduct the tasks specified below using the data set *driving.Rdata*, which includes 25 years of data that cover changes in various state drunk driving, seat belt, and speed limit laws. 
 
 - Specifically, this data set contains data for the 48 continental U.S. states from 1980 through 2004. Various driving laws are indicated in the data set, such as the alcohol level at which drivers are considered legally intoxicated. There are also indicators for “per se” laws—where licenses can be revoked without a trial—and seat belt laws. A few economics and demographic variables are also included. The description of the each of the variables in the dataset is come with the dataste.
 
 **Exercises:**
 
-1. Load the data. Provide a description of the basic structure of the dataset, as we have done in throughout the semester.
+#### 1. Load the data. Provide a description of the basic structure of the dataset, as we have done in throughout the semester.
 
 - The panel data set consists of 56 variables with 1200 observations.  The unit of analysis are the 48 continental states of the U.S., which are coded as a single numeric variable, sorted alphabetically.  The data are measured from 1980 to 2004, and the years are coded as a numeric single variable as well as a full set of dummy variables.  This is a balanced panel data set since there are observations for all 48 states for every year.
 
@@ -32,19 +31,15 @@ attach(data)
 
 # preview and summary stats
 str(data)
-head(data, 40)
-summary(data)
+# head(data)
+# summary(data)
 ```
 
-Conduct a very thorough EDA, which should include both graphical and tabular techniques, on the dataset, including both the dependent variable *totfatrte* and the potential explanatory variables. Remember, graphs must be well-labeled. You need to write a detailed narrative of your observations of your EDA. *Reminder: giving an "output dump" (i.e. providing a bunch of graphs and tables without description and hoping your audience will interpret them) will receive zero point in this exercise.*
+#### Conduct a very thorough EDA, which should include both graphical and tabular techniques, on the dataset, including both the dependent variable *totfatrte* and the potential explanatory variables. Remember, graphs must be well-labeled. You need to write a detailed narrative of your observations of your EDA. *Reminder: giving an "output dump" (i.e. providing a bunch of graphs and tables without description and hoping your audience will interpret them) will receive zero point in this exercise.*
 
 - Histograms of the continuous variables are right skewed to varying degrees, which suggests we may want to apply a log transform to these variables to satisfy the normality assumption for OLS inference.
 
-- Scatterplots show positive correlations between fatality rates and unemployment rates, percentage of population ages 14-24, and miles driver per capita, as well as negative correlations between fatality rates and state population, minimum drinking age, and miles driven.
-
-- Boxplots of indicator variables for driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
-
-- These correlations may be helpful for checking our intuitions about how the explanatory variables should affect fatality rates.  However, the plots used are based on pooled data and do not account for the fact that the data are from multiple time periods.
+- Scatterplots show positive correlations between fatality rates and unemployment rates, percentage of population ages 14-24, and miles driven per capita, as well as negative correlations between fatality rates and state population, minimum drinking age, and miles driven.
 
 ```{r}
 ### EDA for continuous variables - (need to examine for each year)
@@ -65,6 +60,10 @@ ggpairs(data[c('totfatrte',  # slightly skewed right --> log transform
         aes(alpha=0.1))
 ```
 
+- Boxplots of indicator variables for driving laws show lower median and max fatality rate for state-years that enacted stricter seat belt usage, graduated drivers license, zero tolerance, per se, and BAC laws.  Median and max fatality rates appear to increase for states with freeway speed limits greater than 70mph, although the opposite is true for states with speed limit of 55mph.
+
+- These correlations may be helpful for checking our intuitions about how the explanatory variables should affect fatality rates.  However, the plots used are based on pooled data and do not account for the fact that the data are from multiple time periods.
+
 ```{r}
 ### EDA for indicator variables - (need to examine for each year)
 
@@ -82,7 +81,7 @@ df.melt = melt(data[c('state',
                       'sbsecon')],  # =1 --> lower median/max fat. rate  
                id.vars=c('state','year','totfatrte'))
 
-# boxplots
+# boxplots by driving laws
 plot1 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ variable)
 plot1 + labs(title='EDA: Fatality Rate vs. Presence of Driving Laws', x='Driving Law', y='totfatrte')
 
@@ -97,22 +96,26 @@ df.melt = melt(data[c('state',
                       'slnone')],  # =1 --> higher median fat. rate; nearly binary --> transform to binary?
                id.vars=c('state','year','totfatrte'))
 
-# boxplots
+# boxplots by speed limit
 plot2 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ variable)
 plot2 + labs(title='EDA: Fatality Rate vs. Presence of Freeway Speed Limits', x='Driving Law', y='totfatrte')
+
+# boxplots by state
+plot3 = ggplot(data=df.melt, aes(x=round(value), y=totfatrte)) + geom_boxplot(aes(group=round(value))) + facet_grid(. ~ state)
+plot3 + labs(title='EDA: Fatality Rate vs. State', x='Driving Law', y='totfatrte')
 ```
 
 
 
-2.  How is the our dependent variable of interest *totfatrte* defined?  What is the average of this variable in each of the years in the time period covered in this dataset?
+#### 2.  How is the our dependent variable of interest *totfatrte* defined?  What is the average of this variable in each of the years in the time period covered in this dataset?
 
-- Totfatrte is defined as the total fatalities per 100,000 people.  The average fatality rates for 1980-2004 are below:
+- totfatrte is the total number of fatalities per 100,000 population. As we can see in the plot the average fatalities decreases over the time period. Our pooled model estimates this exact average with a baseline year and differences from the baseline. Driving safety as measured in total number of fatalities per 100,000 population certainly decreased as to whether or not this constitutes an overall increase in safety would require further analysis.  The average fatality rates for 1980-2004 are below:
 
 ```{r}
 round(aggregate(totfatrte ~ year, FUN=mean, data=data), 2)
 ```
 
-Estimate a very simple regression model of totfatrte on dummy variables for the years 1981 through 2004.  What does this model explain?  Describe what you find in this model. Did driving become safer over this period? Please provide a detailed explanation.
+#### Estimate a very simple regression model of totfatrte on dummy variables for the years 1981 through 2004.  What does this model explain?  Describe what you find in this model. Did driving become safer over this period? Please provide a detailed explanation.
 
 - This model explains the change in fatality rate in each year relative to 1980.  The coefficients for each year dummy variable can be interpreted as the approximate change in percentage points in the average fatality rate taken across all 48 states.  All coefficients are negative and highly statistically significant (at $\alpha = 0.001$).  The residuals reveal some heteroskedasticity and non-normality, confirming that we need to transform the response to satisfy assumptions for OLS and make our inferences valid.
 
@@ -143,11 +146,11 @@ mod_diag(mod0)
 ```
 
 
-3. Expand your model in *Exercise 2* by adding variables *bac08, bac10, perse, sbprim, sbsecon, sl70plus, gdl, perc14_24, unem, vehicmilespc*, and perhaps *transformations of some or all of these variables*.  Please explain carefully your rationale, which should be based on your EDA, behind any transformation you made. If no transformation is made, explain why transformation is not needed.
+#### 3. Expand your model in *Exercise 2* by adding variables *bac08, bac10, perse, sbprim, sbsecon, sl70plus, gdl, perc14_24, unem, vehicmilespc*, and perhaps *transformations of some or all of these variables*.  Please explain carefully your rationale, which should be based on your EDA, behind any transformation you made. If no transformation is made, explain why transformation is not needed.
 
 - In our EDA, histograms of the continuous variables totfatrte, statepop, unem, perc14_24, and vehicmilespc showed significant skew, so we applied log transformations to enforce normality on these variables and make our inference valid.  This also stabilizes the variance, as seen in the residual plots.
 
-- Indicator variables for bac08, bac10, perse, sbprim, sbsecon, sl70plus, and gdl were not transformed to binary variables.  They represent fractional years to account for laws changing in the middle of the year, but values other than 0 or 1 occur infrequently as shown in the histograms in our EDA.  Thus, the benefit of binarizing these variables would be minimal.
+- Indicator variables for bac08, bac10, perse, sbprim, sbsecon, sl70plus, and gdl were transformed to binary variables to make interpretation easier.  They represent fractional years to account for laws changing in the middle of the year, which is less intuitive than simply indicating whether a state had a law or not in a given year in order to determine if these laws affected fatality rates.  The model with the binarized variables has similar estimates for the coefficients, so we could've used the original variables to fit the model as well if we wanted to look at differences in effect between whole and parts of a year.
 
 ```{r}
 # log transforms - enforce normality
@@ -155,6 +158,15 @@ df.plm$ltotfatrte = log(df.plm$totfatrte)
 df.plm$lunem = log(df.plm$unem)
 df.plm$lperc14_24 = log(df.plm$perc14_24)
 df.plm$lvehicmilespc = log(df.plm$vehicmilespc)
+
+# binarize law variables
+df.plm$bac08.round <- factor(round(df.plm$bac08))
+df.plm$bac10.round <-factor(round(df.plm$bac10))
+df.plm$perse.round <-factor(round(df.plm$perse))
+df.plm$sbprim.round <-factor(round(df.plm$sbprim))
+df.plm$sbsecon.round <-factor(round(df.plm$sbsecon))
+df.plm$s170plus.round <-factor(round(df.plm$sl70plus))
+df.plm$gdl.round <- factor(round(df.plm$gdl))
 
 # model formula
 form1 = update(form0, ltotfatrte ~ . + bac08 + bac10 + perse + sbprim + sbsecon + sl70plus + gdl +
@@ -164,40 +176,57 @@ form1 = update(form0, ltotfatrte ~ . + bac08 + bac10 + perse + sbprim + sbsecon 
 mod1 = plm(form1, data=df.plm, model='pooling')
 summary(mod1)
 
-# check residuals
+# check residuals - not white noise, but normal
 mod_diag(mod1)
+
+# fit model - pooled OLS ~ binarized law vars
+form1b = update(form0, ltotfatrte ~ . + bac08.round + bac10.round + perse.round + sbprim.round + sbsecon.round +
+                        s170plus.round + gdl.round + lperc14_24 + lunem + lvehicmilespc)
+mod1b <- plm(form1b, data = df.plm, model = "pooling")
+summary(mod1b)
+
+# check residuals - not white noise, but normal
+mod_diag(mod1b)
+
+# compare pooled and pooled w/ binarized vars models - models look same
+stargazer(mod1, mod1b, type = 'text')
 ```
-How are the variables *bac8* and *bac10* defined? Interpret the coefficients on *bac8* and *bac10*.
+#### How are the variables *bac8* and *bac10* defined? Interpret the coefficients on *bac8* and *bac10*.
 
-- The variables bac08 and bac10 are defined as fractional years during which the BAC limits were 0.08 and 0.10, respectively.  In some state-years, the BAC limits changed in the middle of the year.  The coefficients for bac08 and bac10 can be interpreted as the percentage change in the fatality rate for each fraction of a year that the BAC laws are in place.  In this case, if BAC limits are 0.08 for an entire year, then the model implies that fatality rates will drop by 6.3%.  If the BAC limits were 0.10 for an entire year, the fatality rate would drop by 1.9%.  However, only bac08 is statistically insignificant (at $\alpha = 0.05$, p-value = 0.018 for bac08 and 0.343 for bac10), so we're not confident in this conclusion for bac10.
+- The variables bac08 and bac10 are defined as fractional years during which the BAC limits were 0.08 and 0.10, respectively.  In some state-years, the BAC limits changed in the middle of the year.  The coefficients for bac08 and bac10 can be interpreted as the percentage change in the fatality rate for each fraction of a year that the BAC laws are in place.  In this case, if BAC limits are 0.08 for an entire year, then the model implies that fatality rates will drop by 6.3%.  If the BAC limits were 0.10 for an entire year, the fatality rate would drop by 1.9%.  However, only bac08 is statistically insignificant (at $\alpha = 0.05$, p-value = 0.011 for bac08 and 0.33 for bac10), so we're not confident in this conclusion for bac10.
 
-Do *per se laws* have a negative effect on the fatality rate? What about having a primary seat belt law? (Note that if a law was enacted sometime within a year the fraction of the year is recorded in place of the zero-one indicator.)
+- The pooled OLS models estimates a negative effect on both blood alcohol limits of .08 and .10 though the effects are marginal and only the .08 effect reaches a statistical significance level of .05. 
 
-- Per se laws decrease the fatality rate by about 2%.  The coefficient for perse is not statistically significant (at $\alpha = 0.05$, p-value = 0.18).  Primary seat belt laws appear to have little to no effect on fatality rate as its coefficient is approximately 0.  The coefficient for sbprim is not statistically significant (at $alpha = 0.05$, p-value = 0.998).
+#### Do *per se laws* have a negative effect on the fatality rate? What about having a primary seat belt law? (Note that if a law was enacted sometime within a year the fraction of the year is recorded in place of the zero-one indicator.)
 
-4. Reestimate the model from *Exercise 3* using a fixed effects (at the state level) model.  How do the coefficients on *bac08, bac10, perse, and sbprim* compare with the pooled OLS estimates?  Which set of estimates do you think is more reliable?
+- Per se laws are estimated to have a negative effect on the fatality rate but this estimate does not reach statistical significance in the pooled model and thus we cannot conclude if it is distinguishable from no effect. The estimate of the effect on a primary seat belt law is even more inconclusive with our standard errors on that estimate far greater that the estimate coefficient so we cannot say with any confidence based on this output whether there is an effect.
+
+- Per se laws decrease the fatality rate by about 1.9%.  The coefficient for perse is not statistically significant (at $\alpha = 0.05$, p-value = 0.11).  Primary seat belt laws appear to have little to no effect on fatality rate as its coefficient is approximately 0.  The coefficient for sbprim is not statistically significant (at $alpha = 0.05$, p-value = 0.98).
+
+#### 4. Reestimate the model from *Exercise 3* using a fixed effects (at the state level) model.  How do the coefficients on *bac08, bac10, perse, and sbprim* compare with the pooled OLS estimates?  Which set of estimates do you think is more reliable?
 
 - The estimate bac08 and bac10 from fixed effect model are less negative than in the pooled OLS and are both insignificant (at $\alpha = 0.05$).  The coefficient estimate for perse is -0.059, less than in the pooled OLS, and is highly significant (at $\alpha = 0.001$).  The estimate for sbprim is -0.04, again less than in the pooled OLS and highly signifcant (at $\alpha = 0.001$).
 
-- The fixed effect estimates are probably more reliable because the model has a higher R-squared (0.73 vs. 0.67).  Also, the estimates for perse and sbprim are larger in magnitude and highly significant, whereas they weren't before, indicating that state unobserved effects may have been correlated with those variables.  One explanation is that policies might have a greater effect on safety when there are unsafe driving conditions.  Thus, states with rainy climates or hilly, windy roads could experience a greater reduction in fatality rate than states with dry climates and flat roads when laws for wearing seat belts and revoking drivers licenses.
+- The fixed effect estimates are probably more reliable because it assumes that there is independence between our observations and thus does not account for any of the unobserved heterogeneity whereas the fixed effects model attempts to eliminate this by estimated an average effect per state. The additional assumption of the fixed effect model is that this unobserved heterogeneity is correlate with the other explanatory variables which seems reasonable given that states and the laws they pass would most likely be correlated across observations.
 
-What assumptions are needed in each of these models?  Are these assumptions reasonable in the current context?
+- The fixed effects model also has a higher R-squared (0.71 vs. 0.66), so more variance is explained with the FE estimators.  Also, the estimates for bac10, perse, and sbprim are larger in magnitude and/or highly significant, whereas they weren't before, indicating that state unobserved effects may have been correlated with those variables.  One explanation is that policies might have a greater effect on safety when there are unsafe driving conditions.  Thus, states with rainy climates or hilly, windy roads could experience a greater reduction in fatality rate than states with dry climates and flat roads when laws for wearing seat belts and revoking drivers licenses.
+
+#### What assumptions are needed in each of these models?  Are these assumptions reasonable in the current context?
 
 - The pooled OLS model assumes that the response variable is normally distributed and errors from the fitted model are uncorrelated with the explanatory variables and homoskedastic.  Based on the residual diagonostics, this assumption is valid.
 
-- The fixed effects model assumes that the state fixed effects are time-independent and thus can be differenced away.  For fixed effects like climate and terrain, this seems reasonable.  The model allows for fixed effects to be correlated with the explanatory variables.  However, the errors must still be homoskedastic and serially uncorrelated over time.  (how to confirm?)
+- The fixed effects model assumes that the state fixed effects are time-independent and thus can be differenced away.  For fixed effects like climate and terrain, this seems reasonable.  The model allows for fixed effects to be correlated with the explanatory variables.  However, the errors must still be homoskedastic and serially uncorrelated over time.
 
 ```{r}
 # fit model - fixed effects at state level
-mod2 = plm(form1, data=df.plm, model='within')
+mod2 = plm(form1b, data=df.plm, model='within')
 summary(mod2)
 
 # check residuals
 mod_diag(mod2)
 
 # compare pooled and FE models
-stargazer(mod1, mod2, type = 'text')
-
+stargazer(mod1b, mod2, type = 'text')
 
 
 # # create dummy variables for each state
@@ -210,23 +239,22 @@ stargazer(mod1, mod2, type = 'text')
 # # head(df.plm); tail(df.plm)
 ```
 
-5. Would you prefer to use a random effects model instead of the fixed effects model you build in *Exercise 4*? Why? Why not?
+#### 5. Would you prefer to use a random effects model instead of the fixed effects model you build in *Exercise 4*? Why? Why not?
 
-- A random effects model assumes that the state fixed effects are not correlated with the explanatory variables.  This assumption is probably not valid though, so we would not use the random effects model.  Using the fixed effect model improved the fit of the model and resulted in highly significant estimates, implying some correlation between the fixed effects and explanatory variables.
+- A random effects model assumes that the state fixed effects are not correlated with the explanatory variables.  This assumption is probably not valid though.  The fixed effect model explained more variance in the data and resulted in highly significant estimates, implying some correlation between the fixed effects and explanatory variables.  Thus, we would not use the random effects model.
 
-6. Suppose that *vehicmilespc*, the number of miles driven per capita, increases by 1,000. Using the FE estimates, what is the estimated effect on totfatrte? Be sure to interpret the estimate as if explaining to a layperson.
+#### 6. Suppose that *vehicmilespc*, the number of miles driven per capita, increases by 1,000. Using the FE estimates, what is the estimated effect on totfatrte? Be sure to interpret the estimate as if explaining to a layperson.
 
-- If the miles driven per capita were to increase by 1000, then the fatality rate would only decrease by 0.5%.
+- If the miles driven per capita were to increase by 1000, then the fatality rate would only decrease by 0.93%.
 
 ```{r}
-exp(.666*log(1000))-100
+# change in fat. rate after taking inverse of log-log transform
+exp(.668*log(1000))-100
 ```
 
-7. If there is serial correlation or heteroskedasticity in the idiosyncratic errors of the model, what would be the consequences on the coefficient estimates and their standard errors?
+#### 7. If there is serial correlation or heteroskedasticity in the idiosyncratic errors of the model, what would be the consequences on the coefficient estimates and their standard errors?
 
-
-
-
+- In the presence of serial correlation or heteroskedasticity our coefficient estimators remain unbiased assuming our endogeneity assumption holds but their standard errors are not estimated properly. If a positive serial correlation exists between errors then we are underestimating our standard errors and thus rendering most statisticals tests invalid. While unlikely it is possible that there is negative serial correlation which would make estimating the effect on the standard errors more difficult but most certainly does not lead to efficient estimates.
 
 
 

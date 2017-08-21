@@ -1,0 +1,148 @@
+---
+title: "Lab 4"
+author: "K.C. Tobin"
+date: "August 14, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+load("Driving.RData")
+drive <- data
+desc
+summary(drive)
+
+hist(drive$totfatrte)
+
+library(data.table)
+library(plm)
+library(stargazer)
+
+
+```
+
+
+##univariate
+```{r}
+hist(drive$totfatrte)
+hist(log(drive$totfatrte))
+
+hist(drive$bac08)
+hist(drive$bac10)
+hist(drive$perse)
+hist(drive$sbprim)
+hist(drive$sbsecon)
+hist(drive$sl70plus)
+hist(drive$gdl)
+
+drive$bac08.round <- factor(round(drive$bac08))
+drive$bac10.round <-factor(round(drive$bac10))
+drive$perse.round <-factor(round(drive$perse))
+drive$sbprim.round <-factor(round(drive$sbprim))
+drive$sbsecon.round <-factor(round(drive$sbsecon))
+drive$s170plus.round <-factor(round(drive$sl70plus))
+drive$gdl.round <- factor(round(drive$gdl))
+
+drive$ltotfatrte <- log(drive$totfatrte)
+drive$lperc14_24 <- log(drive$perc14_24)
+drive$lunem <- log(drive$unem)
+drive$lvehicmilespc <- log(drive$vehicmilespc)
+
+hist(drive$perc14_24)
+hist(log(drive$perc14_24))
+hist(drive$unem)
+hist(log(drive$unem))
+hist(drive$vehicmilespc)
+hist(log(drive$vehicmilespc))
+```
+
+
+##bivariate
+```{r}
+boxplot(drive$totfatrte~drive$bac08.round)
+boxplot(drive$totfatrte~drive$bac10.round)
+boxplot(drive$totfatrte~drive$perse.round)
+boxplot(drive$totfatrte~drive$sbprim.round)
+boxplot(drive$totfatrte~drive$sbsecon.round)
+boxplot(drive$totfatrte~drive$s170plus.round)
+boxplot(drive$totfatrte~drive$gdl.round)
+
+plot(drive$totfatrte~drive$unem)
+plot(drive$totfatrte~drive$perc14_24)
+plot(drive$totfatrte~drive$vehicmilespc)
+
+boxplot(drive$totfatrte~drive$state)
+boxplot(drive$totfatrte~drive$year)
+```
+
+
+
+1. Load the data. Provide a description of the basic structure of the dataset, as we have done in throughout the semester. Conduct a very thorough EDA, which should include both graphical and tabular techniques, on the dataset, including both the dependent variable totfatrte and the potential explanatory variables. Remember, graphs must be well-labeled. You need to write a detailed narrative of your observations of your EDA. Reminder: giving an "output dump" (i.e. providing a bunch of graphs and tables without description and hoping your audience will interpret them) will receive zero point in this exercise. 
+
+2. How is the our dependent variable of interest totfatrte de???ned? What is the average of this variable in each of the years in the time period covered in this dataset? Estimate a very simple regression model of totfatrte on dummy variables for the years 1981 through 2004. What does this model explain? Describe what you ???nd in this model. Did driving become safer over this period? Please provide a detailed explanation. 
+
+```{r}
+drive <- data.table(drive)
+means <- drive[, mean(totfatrte), by = year]
+plot(means$V1~means$year)
+
+mod1 <- plm(ltotfatrte ~ factor(year), data = drive, model="pooling")
+summary(mod1)
+```
+
+totfatrte is the total number of fatalities per 100,000 population. As we can see in the plot the average fatalities decreases over the time period. Our pooled model estimates this exact average with a baseline year and differences from the baseline. Driving safety as measured in total number of fatalities per 100,000 population certainly decreased as to whether or not this constitutes an overall increase in safety would require further analysis.
+
+3. Expand your model in Exercise 2 by adding variables bac08, bac10, perse, sbprim, sbsecon, sl70plus, gdl, perc14_24, unem, vehicmilespc, and perhaps transformations of some or all of these variables. Please explain carefully your rationale, which should be based on your EDA, behind any transformation you made. If no transformation is made, explain why transformation is not needed. How are the variables bac8 and bac10 de???ned? Interpret the coe???cients on bac8 and bac10. Do per se laws have a negative e???ect on the fatality rate? What about having a primary seat belt law? (Note that if a law was enacted sometime within a year the fraction of the year is recorded in place of the zero-one indicator.) 
+
+```{r}
+mod2 <- plm(ltotfatrte ~ factor(year)+bac08+bac10+perse+sbprim+sbsecon
+            +sl70plus+gdl+lperc14_24+lunem+lvehicmilespc, data = drive, model = "pooling")
+summary(mod2)
+
+mod2b <- plm(ltotfatrte ~ factor(year)+bac08.round+bac10.round+perse.round+sbprim.round+sbsecon.round
+            +s170plus.round+gdl.round+lperc14_24+lunem+lvehicmilespc, data = drive, model = "pooling")
+summary(mod2b)
+```
+
+The pooled OLS models estimates a negative effect on both blood alcohol limits of .08 and .10 though the effects are marginal and only the .08 effect reaches a statistical significance level of .05. Per se laws are estimated to have a negative effect on the fatality rate but this estimate does not reach statistical significance in the pooled model and thus we cannot conclude if it is distinguishable from no effect. The estimate of the effect on a primary seat belt law is even more inconclusive with our standard errors on that estimate far greater that the estimate coefficient so we cannot say with any confidence based on this output whether there is an effect.
+
+4. Reestimate the model from Exercise 3 using a ???xed e???ects (at the state level) model. How do the coe???cients on bac08, bac10, perse, and sbprim compare with the pooled OLS estimates? Which set of estimates do you think is more reliable? What assumptions are needed in each of these models? Are these assumptions reasonable in the current context?
+
+```{r}
+drive.plm <- pdata.frame(drive, index=c("state"), drop.index = TRUE)
+mod3 <- plm(ltotfatrte ~ factor(year)+bac08+bac10+perse+sbprim+sbsecon
+            +sl70plus+gdl+lperc14_24+lunem+lvehicmilespc, data = drive.plm, model = "within")
+summary(mod3)
+
+mod3b <- plm(ltotfatrte ~ factor(year)+bac08.round+bac10.round+perse.round+sbprim.round+sbsecon.round
+            +s170plus.round+gdl.round+lperc14_24+lunem+lvehicmilespc, data = drive.plm, model = "within")
+summary(mod3b)
+```
+
+I believe the estimates of the fixed effects model are more reliable. The pooled model assumes that there is independence between our observations and thus does not account for any of the unobserved heterogeneity whereas the fixed effects model attempts to eliminate this by estimated an average effect per state. The additional assumption of the fixed effect model is that this unobserved heterogeneity is correlate with the other explanatory variables which seems reasonable given that states and the laws they pass would most likely be correlated across observations.
+
+5. Would you perfer to use a random e???ects model instead of the ???xed e???ects model you build in Exercise 4? Why? Why not? 
+
+```{r}
+
+mod4 <- plm(ltotfatrte ~ factor(year)+bac08+bac10+perse+sbprim+sbsecon
+            +sl70plus+gdl+lperc14_24+lunem+lvehicmilespc, data = drive.plm, model = "random")
+summary(mod4)
+
+stargazer(mod2, mod2b, type = "text")
+stargazer(mod3, mod3b, type = "text")
+```
+
+I would not prefer a random effects model because it imposes an assumption that the state effect is uncorrelated with our other independent variables which as I mentioned above does not seem reasonable.
+
+6. Suppose that vehicmilespc, the number of miles driven per capita, increases by 1,000. Using the FE estimates, what is the estimated e???ect on totfatrte? Be sure to interpret the estimate as if explaining to a layperson. 
+
+We probably need to confirm we have the same estimates before writing this one up.
+
+7. If there is serial correlation or heteroskedasticity in the idiosyncratic errors of the model, what would be the consequences on the coe???cient estimates and their standard errors?
+
+In the presence of serial correlation or heteroskedasticity our coefficient estimators remain unbiased assuming our endogeneity assumption holds but their standard errors are not estimated properly. If a positive serial correlation exists between errors then we are underestimating our standard errors and thus rendering most statisticals tests invalid. While unlikely it is possible that there is negative serial correlation which would make estimating the effect on the standard errors more difficult but most certainly does not lead to efficient estimates.

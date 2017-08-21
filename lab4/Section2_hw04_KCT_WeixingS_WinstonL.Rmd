@@ -1,5 +1,5 @@
 ---
-title: "Statistical Methods for Discrete Response, Time Series, and Panel Data (W271): Lab 3"
+title: "Statistical Methods for Discrete Response, Time Series, and Panel Data (W271): Lab 4"
 date: "August 19, 2017"
 author: "K.C. Tobin, Weixing Sun, Winston Lin"
 output: pdf_document

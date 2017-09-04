@@ -1,0 +1,9 @@
+Lab 4 General Thoughts
+
+Be precise when interpreting the coefficients of dummy variables. Each measure the impact of time relative to 1980 (the excluded category). 
+
+When it came to assessing the reliability or applicability of one model over another, many labs focused on coefficients, p-values, or R-squared. We typically do not use these as reliability measures. For instance, the p-value of fixed effect models are typically larger than pooled OLS, but we still might prefer them; the R-squared of fixed effects models are always larger than random effect models, but we still might prefer the latter.
+
+We prefer FE models for this question because we are interested in causality. Will changing a law result in greater safety? FE models eliminate a great deal of potential confounders, which makes it more reliable than pooled OLS or random effects. 
+
+Finally, correlated residuals do impact our standard errors, but the direction of the correlation is important. Residuals that are positively correlated lead to SEs that are artificially precise and residuals that are negatively correlated (which is a little rare) lead to SEs that are artificially large. 

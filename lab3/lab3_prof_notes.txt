@@ -1,0 +1,32 @@
+Lab 3 General Thoughts
+
+Q1
+If you have a time-series with a linear trend and seasonality (where each season has it’s own mean), then one seasonal difference will create a weakly stationary time series.
+
+Q2
+SARIMA
+
+EDA was fine for most of the papers I read. Some did a nice job explaining why they focused on a subset of the data (a point I will return to in a few mins)
+
+I mainly kept an eye out for process and how organized that process was. Recall:
+
+Step 1: Establish d and D
+Step 2: Examine ACF and PACF
+Step 3: Fit the Seasonal Parameters
+Step 4: Fit the non-seasonal parameters
+Step 5: Fine Tune
+Step 6: Out of sample test
+Step 7: Forecast
+
+After Steps 3 - 5, you should check your coefficients, residuals, and the ACF/PACF of the residuals. For example, if you concluded that d = 0 (even though a statistical test told you it was OK), you should have become really suspicious when the AR coefficients exceeded 1.
+
+Q2b
+The overwhelming majority of labs did not subset the data and restrict their analysis to the portion of the time-series that remained linear. Remember, you are trying to generate the best possible results for a given problem. This means you have to decide on what model to use OR what data to use. It is more than OK to make these choices in practice, you just have to be transparent about them.
+
+VAR
+I did not grade the VAR model. The prior point applies here, you could apply the VAR model to portions of the data that were trend-stationary (the more recent years). Focusing on that portion of the time-series increases the likelihood you could build a model, instead of differncing one of hte series which is what you would have to do if you used the entire time-series.
+
+Additional notes.
+There is a difference between theoretical models and their implementation as functions in software packages. The VAR model, for example, can only work on time-series that are stationary in the mean --- JUST LIKE ARMA. The Arima *function* in R is really useful because it allows you to imput the raw time-series into the function, and will difference the data based on your d and D values. When it comes time to generating forecasts, the Arima function will integrate the forecasts for you to produce forecasts on the same scale as the raw series.
+
+The VAR function is not as robust as the Arima function. It does not differnce the data for you; it does incoporate seasonal dummies and a linear trend. Because of this, if your time-series are stationary AFTER you remove the seasonal impacts and linear trend, then you can use the VAR function in R. When conducting your EDA, you would have to conduct the unit-root tests on these residuals and not the raw series. To my delight, many of you did this, but I wanted to share this with all of you.

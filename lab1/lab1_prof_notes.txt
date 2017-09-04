@@ -1,0 +1,52 @@
+
+Overall comments:
+
+General comments about Lab
+
+
+
+EDA
+
+- EDA should be well organized and it should not be a chart-dump. Proceed from univariate, bivariate, multi-variate. Remember, the EDA is like answering a series of questions about variable characteristics, potential transformations, relationships etc. 
+
+
+
+Difference in modeling strategy
+
+- Students chose one of two approaches, but I could not tell if you fully understood the differences between the two.
+
+
+
+- Model 1 estimates the prob that an O-ring will fail
+
+
+
+- Model 2 estimates the prob that a flight will have at least 1 O-ring failure
+
+
+
+Implications for independence
+
+- The lack of detail on that front led to relatively imprecise assessments about the consequences of the independence assumption not being met.
+
+
+
+For model 1, it is a big problem because it renders the entire model invalid
+
+
+
+For model 2, we could suffer from some omitted variable bias (if there are shuttle specific characteristics that matter) or biased standard errors.
+
+
+
+Bootstrapping
+
+If you attempted it, you got credit. I will post some notes on this later.
+
+
+
+Take some time to think about your Labs. Email me if you still are having trouble figuring some stuff out.
+
+
+
+Finally, some groups put in a lot of effort and I appreciate it!

@@ -1,0 +1,28 @@
+Lab 2 General Thoughts
+
+I just wanted to comment on a few things that I noticed in the lab.
+
+EDA
+
+Some students put a tremendous amount of work into the EDA. For poisson models — any models — the point of an EDA is to determine whether or not a given model is appropriate (poisson, ols, logit etc), which covariates we should include, whether covariates need any transformation (how should we code them), whether interaction terms of needed, and our baseline expectations about how each variable will related to the dependent variable. We also want to keep an eye out for potential problems and highlight potential solutions.
+
+The two most common mistakes I found:
+
+1. Nearly everyone noticed that width and weight were highly correlated, but very few noticed that this might be a problem. Correlated regressors inflate standard error and sometimes reduce point-estimates. In real world settings, you would need to evaluate whether this is a real problem and how you would tackle it.
+
+2. Most papers failed to discuss whether or not the ordinal variables should be coded as a factor variable or a continuous variable. Some papers concluded that factor variables had a normal distribution. Variables that only have a few possible outcomes cannot be normally distributed. In real world settings, always discuss and explore how you could/should code these variables. 
+
+
+Modelling and Interpretation
+
+It is OK to be a little redundant when you explain why you chose a given set of regressors and why you included them the way you did.
+
+Express the impact of each covariate in terms of percentage change (as described in the book), and for continuous variables, choose a meaningful interval. 
+
+Residual Diagnostics and Other checks
+
+A few papers simply used the plot(model) function. 
+
+
+
+Wherever possible, be methodical. Conduct residual analysis on all covaraites, and dig more into the influence analysis. For instance, there are 4 types of influence statistics. For each, state what each measures and how they could impact your results.
